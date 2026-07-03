@@ -1,0 +1,8 @@
+id = "fake-backend"
+title = "Fake host backend descriptor"
+codec = "lisp"
+setup = "setup.siml"
+purpose = "purpose.md"
+order = 10
+tags = ["stream", "host", "fake"]
+requires = ["stream-host", "codec/lisp"]

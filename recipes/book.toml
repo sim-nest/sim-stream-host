@@ -1,0 +1,5 @@
+book = "stream-host"
+title = "Stream Host"
+summary = "Host backend inventory, callback queues, fake devices, and cassettes."
+order = 119
+chapters = ["01-basics"]

@@ -1,0 +1,5 @@
+{"kind":"recipe","path":"recipes/01-basics/chapter.toml"}
+{"kind":"recipe","path":"recipes/01-basics/fake-backend/purpose.md"}
+{"kind":"recipe","path":"recipes/01-basics/fake-backend/recipe.toml"}
+{"kind":"recipe","path":"recipes/01-basics/fake-backend/setup.siml"}
+{"kind":"recipe","path":"recipes/book.toml"}

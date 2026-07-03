@@ -1,0 +1,10 @@
+{
+  "schema": "sim.card-index.v1",
+  "cards": [
+    "recipes/01-basics/chapter.toml",
+    "recipes/01-basics/fake-backend/purpose.md",
+    "recipes/01-basics/fake-backend/recipe.toml",
+    "recipes/01-basics/fake-backend/setup.siml",
+    "recipes/book.toml"
+  ]
+}
