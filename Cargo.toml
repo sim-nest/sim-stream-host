@@ -36,5 +36,8 @@ rtp-midi = []
 rtmidi-hardware = []
 ble-midi-hardware = []
 
+[dev-dependencies]
+sim-kernel = { version = "0.1", features = ["test-support"] }
+
 [lints]
 workspace = true
