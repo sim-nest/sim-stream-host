@@ -1,5 +1,37 @@
 # sim-stream-host
 
+Plug SIM's live streams into real audio/MIDI gear and across the network: host
+backends move stream packets between the runtime and external transports or
+platform devices, over a bounded, allocation-free, non-blocking queue.
+
+SIM is a small Rust protocol kernel plus loadable libraries; the `sim` CLI
+installs with `cargo install sim-run`, and `sim-say` is the full walkthrough.
+
+## Example: bounded backpressure ring
+
+The path between a host callback and the runtime is a preallocated bounded ring
+that drops rather than blocks or allocates when full. Add the crate:
+
+```bash
+cargo add sim-lib-stream-host
+```
+
+```rust
+use sim_lib_stream_host::{ProcessRingPush, ProcessSharedRing};
+
+let mut ring = ProcessSharedRing::with_capacity(2).unwrap();
+assert_eq!(ring.try_push(1), ProcessRingPush::Accepted);
+assert_eq!(ring.try_push(2), ProcessRingPush::Accepted);
+assert_eq!(ring.try_push(3), ProcessRingPush::DroppedNewest(3));
+assert_eq!(ring.try_pop(), Some(1));
+```
+
+Source: passing doctest in `src/ring.rs:42` (`ProcessSharedRing::with_capacity`).
+For a deterministic, device-free host-backend descriptor see the recipe at
+`recipes/01-basics/fake-backend/`.
+
+## About
+
 sim-stream-host is the host-device stream substrate of the SIM constellation.
 SIM is an expandable Rust runtime built around a small protocol kernel plus a
 large set of loadable libraries: the kernel defines contracts, libraries provide
