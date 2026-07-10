@@ -4,5 +4,5 @@ codec = "lisp"
 setup = "setup.siml"
 purpose = "purpose.md"
 order = 10
-tags = ["stream", "host", "fake"]
+tags = ["stream", "host", "fake", "sandbox-descriptor"]
 requires = ["stream-host", "codec/lisp"]
