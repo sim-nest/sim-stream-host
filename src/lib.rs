@@ -14,6 +14,7 @@ mod capability;
 mod cassette;
 mod catalog;
 mod config;
+mod config_probe;
 mod eval_site;
 mod fake;
 mod inventory;
@@ -37,6 +38,9 @@ pub use cassette::HostCallbackCassette;
 pub use catalog::{DeviceCatalog, audio_device_export_symbol};
 pub use config::{
     HostClockInfo, HostLatencyInfo, HostReconnectPolicy, HostStreamConfig, HostStreamConfigRequest,
+};
+pub use config_probe::{
+    HostStreamConfigProbe, host_stream_config_probe_symbol, stream_host_config_lib_symbol,
 };
 pub use eval_site::{DeviceProvider, StreamEvalSite};
 pub use fake::{FakeBackend, fake_backend_symbol};
@@ -68,6 +72,8 @@ pub use site::{AudioSite, ModeledAudioSite};
 
 #[cfg(test)]
 mod catalog_tests;
+#[cfg(test)]
+mod config_probe_tests;
 #[cfg(test)]
 mod placement_tests;
 #[cfg(test)]

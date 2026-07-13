@@ -122,12 +122,54 @@ impl DeviceCatalog {
         self.enumerate_kind(DeviceKind::Audio)
     }
 
+    /// Returns safe audio backend candidate names from catalog records.
+    ///
+    /// Hardware records contribute their transport name. Modeled records keep
+    /// the deterministic `modeled` fallback as the final candidate.
+    pub fn audio_backend_names(&self) -> Result<Vec<String>> {
+        self.backend_names(DeviceKind::Audio)
+    }
+
+    /// Returns safe MIDI backend candidate names from catalog records.
+    ///
+    /// Hardware records contribute their transport name. Modeled records keep
+    /// the deterministic `modeled` fallback as the final candidate.
+    pub fn midi_backend_names(&self) -> Result<Vec<String>> {
+        self.backend_names(DeviceKind::Midi)
+    }
+
     fn enumerate_kind(&self, kind: DeviceKind) -> Result<Vec<DeviceRecord>> {
         Ok(self
             .enumerate()?
             .into_iter()
             .filter(|record| record.kind == kind)
             .collect())
+    }
+
+    fn backend_names(&self, kind: DeviceKind) -> Result<Vec<String>> {
+        let mut names = Vec::new();
+        let mut has_modeled = false;
+        for record in self
+            .enumerate()?
+            .into_iter()
+            .filter(|record| record.kind == kind)
+        {
+            match record.placement {
+                Placement::Modeled => has_modeled = true,
+                Placement::Hardware { transport } => push_unique(&mut names, transport.name),
+            }
+        }
+        if has_modeled || names.is_empty() {
+            push_unique(&mut names, "modeled");
+        }
+        Ok(names)
+    }
+}
+
+fn push_unique(names: &mut Vec<String>, name: impl ToString) {
+    let name = name.to_string();
+    if !names.iter().any(|existing| existing == &name) {
+        names.push(name);
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "sim-lib-stream-host"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MPL-2.0"
 description = "Host-device stream backend substrate for STREAM 6."
@@ -25,6 +25,7 @@ homepage = "https://github.com/sim-nest/sim-stream-host"
 unsafe_code = "forbid"
 
 [dependencies]
+sim-config = { version = "0.1.1" }
 sim-kernel = { version = "0.1.0" }
 sim-lib-midi-core = { version = "0.1.0" }
 sim-lib-midi-live = { version = "0.1.0" }
