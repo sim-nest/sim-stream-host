@@ -15,6 +15,7 @@ mod cassette;
 mod catalog;
 mod config;
 mod config_probe;
+pub mod cookbook;
 mod eval_site;
 mod fake;
 mod inventory;
@@ -42,6 +43,7 @@ pub use config::{
 pub use config_probe::{
     HostStreamConfigProbe, host_stream_config_probe_symbol, stream_host_config_lib_symbol,
 };
+pub use cookbook::fake_backend_demo;
 pub use eval_site::{DeviceProvider, StreamEvalSite};
 pub use fake::{FakeBackend, fake_backend_symbol};
 pub use inventory::{HostDeviceInventory, HostPortSpec};
