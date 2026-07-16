@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use sim_kernel::{Expr, Symbol, effect::effect_device_read_kind};
+use sim_kernel::{Expr, Symbol};
 use sim_lib_stream_core::{
     BackpressureOutcome, BufferPolicy, ClockDomain, MidiPacket, MidiPacketEvent, PushResult,
     StreamDirection, StreamInspectorStatus, StreamMedia, StreamMetadata, StreamPacket, StreamValue,
@@ -18,6 +18,7 @@ use crate::{
     HostCallbackQueue, HostClockInfo, HostDeviceSpec, HostDirection, HostLatencyInfo,
     HostOpenStream, HostStreamConfig, HostStreamConfigRequest, HostStreamDriver, RtpMidiBackend,
     fake_backend_symbol, rtp_midi_backend_symbol, stream_host_capability,
+    stream_host_device_read_effect_kind,
 };
 
 #[test]
@@ -341,7 +342,7 @@ fn host_open_plan_uses_device_effect_and_stream_capability() {
     let plan = spec.open_plan();
     assert_eq!(plan.backend(), &rtp_midi_backend_symbol());
     assert_eq!(plan.device(), spec.id());
-    assert_eq!(plan.effect_kind(), &effect_device_read_kind());
+    assert_eq!(plan.effect_kind(), &stream_host_device_read_effect_kind());
     assert_eq!(plan.requires(), &[stream_host_capability()]);
 }
 

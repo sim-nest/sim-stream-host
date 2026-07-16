@@ -1,9 +1,6 @@
 //! Host backend, device, direction, and open-plan model records.
 
-use sim_kernel::{
-    CapabilityName, Expr, Symbol,
-    effect::{effect_device_read_kind, effect_device_write_kind},
-};
+use sim_kernel::{CapabilityName, Expr, Symbol};
 use sim_lib_stream_core::{BufferPolicy, StreamDirection, StreamMedia, StreamMetadata};
 
 use crate::capability::HostBackendCapability;
@@ -11,6 +8,16 @@ use crate::capability::HostBackendCapability;
 /// Returns the capability name gating host stream device access.
 pub fn stream_host_capability() -> CapabilityName {
     CapabilityName::new("stream.host")
+}
+
+/// Returns the stream-host effect kind for device reads.
+pub fn stream_host_device_read_effect_kind() -> Symbol {
+    Symbol::qualified("effect", "device-read")
+}
+
+/// Returns the stream-host effect kind for device writes.
+pub fn stream_host_device_write_effect_kind() -> Symbol {
+    Symbol::qualified("effect", "device-write")
 }
 
 /// Stable metadata describing a host backend.
@@ -274,8 +281,8 @@ impl HostDirection {
     /// for input, device write for output or duplex).
     pub fn effect_kind(self) -> Symbol {
         match self {
-            Self::Input => effect_device_read_kind(),
-            Self::Output | Self::Duplex => effect_device_write_kind(),
+            Self::Input => stream_host_device_read_effect_kind(),
+            Self::Output | Self::Duplex => stream_host_device_write_effect_kind(),
         }
     }
 }

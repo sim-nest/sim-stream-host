@@ -51,6 +51,7 @@ pub use midi_live_eval_site::MidiLiveEvalSite;
 pub use midi_provider::ModeledMidiProvider;
 pub use model::{
     HostBackendInfo, HostDeviceSpec, HostDirection, HostOpenPlan, stream_host_capability,
+    stream_host_device_read_effect_kind, stream_host_device_write_effect_kind,
 };
 pub use placement::{
     AudioDeviceCard, AudioPlacementRequest, AudioSiteKey, DeviceDirection, DeviceKind,
