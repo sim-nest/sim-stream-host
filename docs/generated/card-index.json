@@ -1,10 +1,18 @@
 {
-  "schema": "sim.card-index.v1",
+  "card_count": 2,
   "cards": [
-    "recipes/01-basics/chapter.toml",
-    "recipes/01-basics/fake-backend/purpose.md",
-    "recipes/01-basics/fake-backend/recipe.toml",
-    "recipes/01-basics/fake-backend/setup.siml",
-    "recipes/book.toml"
-  ]
+    {
+      "id": "browse/catalog",
+      "kind": "browse-root",
+      "owner": "workspace",
+      "summary": "root browse catalog"
+    },
+    {
+      "id": "registry/catalog",
+      "kind": "browse-registry",
+      "owner": "workspace",
+      "summary": "registry catalog browse card"
+    }
+  ],
+  "generator": "xtask repo-contract v1"
 }

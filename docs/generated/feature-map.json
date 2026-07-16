@@ -1,5 +1,38 @@
 {
-  "schema": "sim.feature-map.v1",
-  "repo": "sim-stream-host",
-  "packages": []
+  "generator": "xtask repo-contract v1",
+  "packages": [
+    {
+      "features": [
+        {
+          "edges": [],
+          "name": "ble-midi-hardware",
+          "workspace_edges": []
+        },
+        {
+          "edges": [
+            "rtp-midi"
+          ],
+          "name": "default",
+          "workspace_edges": []
+        },
+        {
+          "edges": [],
+          "name": "rtmidi-hardware",
+          "workspace_edges": []
+        },
+        {
+          "edges": [],
+          "name": "rtp-midi",
+          "workspace_edges": []
+        }
+      ],
+      "group": "workspace",
+      "package": "sim-lib-stream-host"
+    },
+    {
+      "features": [],
+      "group": "workspace",
+      "package": "xtask"
+    }
+  ]
 }
