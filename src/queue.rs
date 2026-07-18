@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use sim_kernel::{Error, Result, Symbol};
 use sim_lib_stream_core::{
-    PushResult, StreamInspectorSnapshot, StreamItem, StreamMedia, StreamPacket, StreamStats,
-    StreamValue, TransportProfile,
+    PushResult, StreamDirection, StreamInspectorSnapshot, StreamItem, StreamMedia, StreamPacket,
+    StreamStats, StreamValue, TransportProfile,
 };
 
 /// Cloneable handle host callbacks use to enqueue packets into a stream.
@@ -16,6 +16,7 @@ use sim_lib_stream_core::{
 #[derive(Clone)]
 pub struct HostCallbackQueue {
     media: StreamMedia,
+    direction: StreamDirection,
     stream: Arc<StreamValue>,
 }
 
@@ -24,6 +25,7 @@ impl HostCallbackQueue {
     pub fn new(stream: Arc<StreamValue>) -> Self {
         Self {
             media: stream.metadata().media(),
+            direction: stream.metadata().direction(),
             stream,
         }
     }
@@ -35,6 +37,7 @@ impl HostCallbackQueue {
 
     /// Enqueues a packet from a host callback after checking its media.
     pub fn callback_packet(&self, packet: StreamPacket) -> Result<PushResult> {
+        self.ensure_callback_input()?;
         self.ensure_media(&packet)?;
         self.stream.push_packet(StreamItem::new(packet))
     }
@@ -42,6 +45,7 @@ impl HostCallbackQueue {
     /// Enqueues a prebuilt stream item from a host callback after checking its
     /// media.
     pub fn callback_item(&self, item: StreamItem) -> Result<PushResult> {
+        self.ensure_callback_input()?;
         self.ensure_media(item.packet())?;
         self.stream.push_packet(item)
     }
@@ -92,5 +96,14 @@ impl HostCallbackQueue {
                 found: "host callback packet for another media",
             })
         }
+    }
+
+    fn ensure_callback_input(&self) -> Result<()> {
+        if self.direction == StreamDirection::Sink {
+            return Err(Error::Eval(
+                "host callbacks cannot push into a sink stream".to_owned(),
+            ));
+        }
+        Ok(())
     }
 }

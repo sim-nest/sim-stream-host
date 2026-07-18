@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use sim_kernel::{Error, Result, Symbol};
+use sim_kernel::{Cx, Error, Result, Symbol};
 use sim_lib_stream_core::{
     BufferPolicy, ClockDomain, MidiPacket, StreamEnvelope, StreamItem, StreamMedia, StreamPacket,
     StreamValue, TransportProfile,
@@ -79,7 +79,7 @@ impl RtpMidiBackend {
     ///
     /// Returns an error when the spec belongs to another backend, is not MIDI
     /// media, or is output-only.
-    pub fn open_source(&self, spec: HostDeviceSpec) -> Result<RtpMidiPort> {
+    pub fn open_source(&self, cx: &mut Cx, spec: HostDeviceSpec) -> Result<RtpMidiPort> {
         if spec.backend() != self.info.id() {
             return Err(Error::Eval(format!(
                 "RTP-MIDI backend cannot open {} device specs",
@@ -98,6 +98,7 @@ impl RtpMidiBackend {
                 found: "output-only host device",
             });
         }
+        spec.open_plan().enforce(cx)?;
         let stream = Arc::new(StreamValue::push(spec.metadata()));
         Ok(RtpMidiPort {
             spec,

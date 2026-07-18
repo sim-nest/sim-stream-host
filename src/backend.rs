@@ -19,6 +19,12 @@ pub trait HostBackend: Send + Sync {
     fn enumerate(&self) -> Result<HostDeviceInventory>;
 
     /// Opens a stream according to the requested host configuration.
+    ///
+    /// This is backend-level dispatch for implementations and already checked
+    /// callers. Public host opens should route through
+    /// [`HostBackendRegistry::open_checked`](crate::HostBackendRegistry::open_checked)
+    /// so `stream.host` authority and device effects are handled before the
+    /// backend is reached.
     fn open(&self, request: HostStreamConfigRequest) -> Result<HostOpenStream>;
 }
 

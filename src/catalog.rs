@@ -1,7 +1,7 @@
 //! Shared host-device catalog for modeled stream placements.
 
 use sim_kernel::{
-    Error, Result, Symbol,
+    Cx, Error, Result, Symbol,
     library::{ExportKind, ExportRecord, ExportState, Registry},
 };
 
@@ -96,7 +96,23 @@ impl DeviceCatalog {
         Ok(records)
     }
 
-    /// Opens a cataloged stream evaluation site by device id.
+    /// Opens a cataloged stream evaluation site by device id after checking
+    /// authority and recording the declared device effects.
+    pub fn open_checked(&self, cx: &mut Cx, id: &Symbol) -> Result<Box<dyn StreamEvalSite>> {
+        for record in self.enumerate()? {
+            if &record.id == id {
+                record.open_plan().enforce(cx)?;
+                return self.open(id);
+            }
+        }
+        Err(Error::Eval(format!("DeviceCatalog: no device '{id}'")))
+    }
+
+    /// Opens a cataloged stream evaluation site by device id through the
+    /// provider-level compatibility dispatch path.
+    ///
+    /// Runtime and public host opens should use [`Self::open_checked`] so the
+    /// catalog row's authority and device effects are handled first.
     pub fn open(&self, id: &Symbol) -> Result<Box<dyn StreamEvalSite>> {
         for provider in &self.providers {
             let records = provider.enumerate()?;
@@ -107,7 +123,17 @@ impl DeviceCatalog {
         Err(Error::Eval(format!("DeviceCatalog: no device '{id}'")))
     }
 
-    /// Opens a cataloged MIDI device as a live MIDI evaluation site.
+    /// Opens a cataloged MIDI device as a live MIDI evaluation site after
+    /// checking authority and recording the declared device effects.
+    pub fn open_live_checked(&self, cx: &mut Cx, id: &Symbol) -> Result<MidiLiveEvalSite> {
+        MidiLiveEvalSite::from_eval_site(id, self.open_checked(cx, id)?)
+    }
+
+    /// Opens a cataloged MIDI device as a live MIDI evaluation site through the
+    /// compatibility dispatch path.
+    ///
+    /// Runtime and public host opens should use [`Self::open_live_checked`] so
+    /// the catalog row's authority and device effects are handled first.
     pub fn open_live(&self, id: &Symbol) -> Result<MidiLiveEvalSite> {
         MidiLiveEvalSite::from_eval_site(id, self.open(id)?)
     }

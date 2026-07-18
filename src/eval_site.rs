@@ -22,5 +22,9 @@ pub trait DeviceProvider: Send + Sync {
     fn enumerate(&self) -> Result<Vec<DeviceRecord>>;
 
     /// Opens one provider-owned device by catalog id.
+    ///
+    /// This is provider-level dispatch for an already checked catalog row.
+    /// Public catalog opens should use
+    /// [`DeviceCatalog::open_checked`](crate::DeviceCatalog::open_checked).
     fn open(&self, id: &Symbol) -> Result<Box<dyn StreamEvalSite>>;
 }

@@ -1,15 +1,23 @@
 //! Deterministic cookbook builders for stream-host recipes.
 
-use sim_kernel::{Expr, NumberLiteral, Symbol};
+use std::sync::Arc;
 
-use crate::{FakeBackend, HostBackend};
+use sim_kernel::{Cx, DefaultFactory, EagerPolicy, Expr, NumberLiteral, Symbol};
+
+use crate::{FakeBackend, HostBackend, HostBackendRegistry, stream_host_capability};
 
 /// Build the modeled fake backend descriptor used by the cookbook recipe.
 pub fn fake_backend_demo() -> Expr {
     let backend = FakeBackend::new();
     let inventory = backend.enumerate().expect("fake backend enumerates");
-    let opened = backend
-        .open(FakeBackend::data_request(8).expect("valid fake data request"))
+    let mut registry = HostBackendRegistry::new();
+    registry.register(backend).expect("fake backend registers");
+    let mut cx = authorized_demo_cx();
+    let opened = registry
+        .open_checked(
+            &mut cx,
+            FakeBackend::data_request(8).expect("valid fake data request"),
+        )
         .expect("fake backend opens data stream");
     let config = opened.config();
 
@@ -41,6 +49,33 @@ fn number(value: impl ToString) -> Expr {
     })
 }
 
+#[allow(
+    clippy::unit_arg,
+    reason = "published sim-kernel grants return unit; workspace grants return Result"
+)]
+fn authorized_demo_cx() -> Cx {
+    let (mut cx, seat) = Cx::new_seated(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    seat.grant(&mut cx, stream_host_capability())
+        .assert_demo_granted();
+    cx
+}
+
+trait DemoGrantResult {
+    fn assert_demo_granted(self);
+}
+
+impl DemoGrantResult for () {
+    fn assert_demo_granted(self) {}
+}
+
+impl<E: std::fmt::Display> DemoGrantResult for std::result::Result<(), E> {
+    fn assert_demo_granted(self) {
+        if let Err(err) = self {
+            panic!("demo host grant is valid: {err}");
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,9 +90,11 @@ mod tests {
             matches!(value, Expr::Symbol(symbol) if symbol.as_qualified_str() == "stream/media/data")
         }));
         assert!(entries.iter().any(|(_, value)| *value == Expr::Bool(false)));
-        let backend = FakeBackend::new();
-        let opened = backend
-            .open(FakeBackend::data_request(4).expect("request"))
+        let mut registry = HostBackendRegistry::new();
+        registry.register(FakeBackend::new()).expect("register");
+        let mut cx = authorized_demo_cx();
+        let opened = registry
+            .open_checked(&mut cx, FakeBackend::data_request(4).expect("request"))
             .expect("open");
         assert_eq!(opened.config().media(), StreamMedia::Data);
     }

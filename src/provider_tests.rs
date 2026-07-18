@@ -13,6 +13,7 @@ use crate::{
     AudioDeviceCard, AudioPlacementRequest, AudioProviderHost, AudioProviderRegistrar, AudioRouter,
     AudioSiteKey, DeviceCatalog, FakeBackend, HostDirection, HostStreamConfigRequest,
     ModeledAudioSite, fake_backend_symbol, native_audio_provider_capability,
+    stream_host_capability,
 };
 
 fn modeled_provider_symbol() -> Symbol {
@@ -100,6 +101,7 @@ fn modeled_provider_registers_site_and_catalog_discovers_it() {
     let loaders = LoaderRegistry::new().with_loader(ModeledProviderLoader::new(Arc::clone(&loads)));
     let mut cx = test_cx();
     cx.grant(native_audio_provider_capability());
+    cx.grant(stream_host_capability());
     let mut router = AudioRouter::new();
     let mut host = AudioProviderHost::new(&mut cx, &loaders)
         .with_entry(modeled_provider_symbol(), modeled_provider_entry);
@@ -127,6 +129,7 @@ fn missing_provider_entry_degrades_to_modeled_site() {
     let loaders = LoaderRegistry::new().with_loader(ModeledProviderLoader::new(Arc::clone(&loads)));
     let mut cx = test_cx();
     cx.grant(native_audio_provider_capability());
+    cx.grant(stream_host_capability());
     let modeled = AudioSiteKey::new("audio/modeled/stereo-0");
     let mut router = AudioRouter::new();
     router.register(Arc::new(ModeledAudioSite::new(
@@ -145,16 +148,19 @@ fn missing_provider_entry_degrades_to_modeled_site() {
     let resolved = router.resolve_or_modeled(&requested, &modeled).unwrap();
     assert_eq!(resolved, modeled);
     let opened = router
-        .open_placement(AudioPlacementRequest {
-            site_key: resolved,
-            stream_request: HostStreamConfigRequest::new(
-                fake_backend_symbol(),
-                Symbol::new("fake/pcm"),
-                StreamMedia::Pcm,
-                HostDirection::Output,
-                BufferPolicy::bounded(8).unwrap(),
-            ),
-        })
+        .open_placement_checked(
+            &mut cx,
+            AudioPlacementRequest {
+                site_key: resolved,
+                stream_request: HostStreamConfigRequest::new(
+                    fake_backend_symbol(),
+                    Symbol::new("fake/pcm"),
+                    StreamMedia::Pcm,
+                    HostDirection::Output,
+                    BufferPolicy::bounded(8).unwrap(),
+                ),
+            },
+        )
         .unwrap();
     assert_eq!(opened.config().media(), StreamMedia::Pcm);
     opened.close().unwrap();

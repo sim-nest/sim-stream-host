@@ -7,7 +7,7 @@ use sim_kernel::{
 
 use crate::{
     DeviceCatalog, DeviceDirection, DeviceKind, Placement, StreamEvalSite,
-    audio_device_export_symbol,
+    audio_device_export_symbol, stream_host_capability,
 };
 
 #[cfg(any(feature = "rtmidi-hardware", feature = "ble-midi-hardware"))]
@@ -69,7 +69,10 @@ fn default_audio_catalog_has_no_retired_transport_targets() {
 #[test]
 fn catalog_open_modeled_midi_input_returns_modeled_placement() {
     let catalog = DeviceCatalog::default_modeled();
-    let site = catalog.open(&Symbol::new("midi/model/in-0")).unwrap();
+    let mut cx = authorized_cx();
+    let site = catalog
+        .open_checked(&mut cx, &Symbol::new("midi/model/in-0"))
+        .unwrap();
 
     assert_eq!(site.placement(), &Placement::Modeled);
     assert_eq!(site.device_record().kind, DeviceKind::Midi);
@@ -80,8 +83,9 @@ fn catalog_open_modeled_midi_input_returns_modeled_placement() {
 #[test]
 fn catalog_open_unknown_id_returns_error() {
     let catalog = DeviceCatalog::default_modeled();
+    let mut cx = test_cx();
     let err = catalog
-        .open(&Symbol::new("midi/no-such-device"))
+        .open_checked(&mut cx, &Symbol::new("midi/no-such-device"))
         .err()
         .unwrap();
 
@@ -91,7 +95,10 @@ fn catalog_open_unknown_id_returns_error() {
 #[test]
 fn catalog_open_live_modeled_midi_input_yields_modeled_placement() {
     let catalog = DeviceCatalog::default_modeled();
-    let mut live = catalog.open_live(&Symbol::new("midi/model/in-0")).unwrap();
+    let mut cx = authorized_cx();
+    let mut live = catalog
+        .open_live_checked(&mut cx, &Symbol::new("midi/model/in-0"))
+        .unwrap();
 
     assert_eq!(live.placement(), &Placement::Modeled);
     assert_eq!(live.device_record().kind, DeviceKind::Midi);
@@ -104,7 +111,10 @@ fn catalog_open_live_modeled_midi_input_yields_modeled_placement() {
 #[test]
 fn catalog_open_live_modeled_midi_output_exposes_sink() {
     let catalog = DeviceCatalog::default_modeled();
-    let mut live = catalog.open_live(&Symbol::new("midi/model/out-0")).unwrap();
+    let mut cx = authorized_cx();
+    let mut live = catalog
+        .open_live_checked(&mut cx, &Symbol::new("midi/model/out-0"))
+        .unwrap();
 
     assert_eq!(live.placement(), &Placement::Modeled);
     assert_eq!(live.device_record().kind, DeviceKind::Midi);
@@ -116,8 +126,9 @@ fn catalog_open_live_modeled_midi_output_exposes_sink() {
 #[test]
 fn catalog_open_live_non_midi_returns_error() {
     let catalog = DeviceCatalog::default_modeled();
+    let mut cx = authorized_cx();
     let err = catalog
-        .open_live(&Symbol::new("audio/model/stereo-0"))
+        .open_live_checked(&mut cx, &Symbol::new("audio/model/stereo-0"))
         .err()
         .unwrap();
 
@@ -172,7 +183,10 @@ fn catalog_with_ble_midi_keeps_hardware_registration_opt_in() {
                     transport: Symbol::new("ble-midi"),
                 }
     }));
-    let site = catalog.open(&Symbol::new("ble-midi/bluez-0")).unwrap();
+    let mut cx = authorized_cx();
+    let site = catalog
+        .open_checked(&mut cx, &Symbol::new("ble-midi/bluez-0"))
+        .unwrap();
     assert_eq!(site.device_record().direction, DeviceDirection::Duplex);
     site.close().unwrap();
 }
@@ -279,4 +293,10 @@ impl Lib for ModeledBackendLib {
 
 fn test_cx() -> Cx {
     Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory))
+}
+
+fn authorized_cx() -> Cx {
+    let mut cx = test_cx();
+    cx.grant(stream_host_capability());
+    cx
 }

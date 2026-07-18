@@ -19,6 +19,10 @@ pub trait AudioSite: Send + Sync {
     fn card(&self) -> &AudioDeviceCard;
 
     /// Opens a host stream for this site using the supplied stream request.
+    ///
+    /// This is site-level dispatch for an already checked placement. Public
+    /// placement opens should use
+    /// [`AudioRouter::open_placement_checked`](crate::AudioRouter::open_placement_checked).
     fn open(&self, request: HostStreamConfigRequest) -> Result<HostOpenStream>;
 }
 

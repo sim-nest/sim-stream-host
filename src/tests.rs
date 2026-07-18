@@ -6,11 +6,11 @@ use std::{
     },
 };
 
-use sim_kernel::{Expr, Symbol};
+use sim_kernel::{Cx, DefaultFactory, EagerPolicy, Error, Expr, Symbol};
 use sim_lib_stream_core::{
-    BackpressureOutcome, BufferPolicy, ClockDomain, MidiPacket, MidiPacketEvent, PushResult,
-    StreamDirection, StreamInspectorStatus, StreamMedia, StreamMetadata, StreamPacket, StreamValue,
-    TransportProfile,
+    BackpressureOutcome, BufferPolicy, ClockDomain, MidiPacket, MidiPacketEvent, PcmPacket,
+    PushResult, StreamDirection, StreamInspectorStatus, StreamMedia, StreamMetadata, StreamPacket,
+    StreamValue, TransportProfile,
 };
 
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
     HostCallbackQueue, HostClockInfo, HostDeviceSpec, HostDirection, HostLatencyInfo,
     HostOpenStream, HostStreamConfig, HostStreamConfigRequest, HostStreamDriver, RtpMidiBackend,
     fake_backend_symbol, rtp_midi_backend_symbol, stream_host_capability,
-    stream_host_device_read_effect_kind,
+    stream_host_device_read_effect_kind, stream_host_device_write_effect_kind,
 };
 
 #[test]
@@ -57,8 +57,19 @@ fn host_backend_registry_opens_fake_stream_without_hardware() {
             .any(|device| device.id() == &Symbol::new("fake/data"))
     );
 
+    let denied = match registry.open_checked(&mut test_cx(), FakeBackend::data_request(2).unwrap())
+    {
+        Ok(_) => panic!("host stream open should require stream.host"),
+        Err(err) => err,
+    };
+    assert!(matches!(
+        denied,
+        Error::CapabilityDenied { capability } if capability == stream_host_capability()
+    ));
+
+    let mut cx = authorized_cx();
     let opened = registry
-        .open(FakeBackend::data_request(2).unwrap())
+        .open_checked(&mut cx, FakeBackend::data_request(2).unwrap())
         .unwrap();
     assert_eq!(opened.config().backend(), &fake_backend_symbol());
     assert_eq!(
@@ -75,6 +86,33 @@ fn host_backend_registry_opens_fake_stream_without_hardware() {
 }
 
 #[test]
+fn host_backend_registry_records_duplex_read_and_write_effects() {
+    let mut registry = HostBackendRegistry::new();
+    registry.register(FakeBackend::new()).unwrap();
+    let request = FakeBackend::duplex_data_request(2).unwrap();
+    let plan = registry.plan_open(&request).unwrap();
+    assert_eq!(
+        plan.effect_kinds(),
+        &[
+            stream_host_device_read_effect_kind(),
+            stream_host_device_write_effect_kind()
+        ]
+    );
+
+    let mut cx = authorized_cx();
+    let opened = registry.open_checked(&mut cx, request).unwrap();
+
+    assert_eq!(opened.config().direction(), HostDirection::Duplex);
+    assert_eq!(
+        recorded_effect_kinds(&cx),
+        vec![
+            stream_host_device_read_effect_kind(),
+            stream_host_device_write_effect_kind(),
+        ]
+    );
+}
+
+#[test]
 fn host_backend_registry_rejects_duplicate_backend_ids() {
     let mut registry = HostBackendRegistry::new();
     registry.register(FakeBackend::new()).unwrap();
@@ -87,8 +125,9 @@ fn host_backend_registry_rejects_duplicate_backend_ids() {
 fn host_callback_cassette_replays_callback_timeline() {
     let mut registry = HostBackendRegistry::new();
     registry.register(FakeBackend::new()).unwrap();
+    let mut cx = authorized_cx();
     let opened = registry
-        .open(FakeBackend::data_request(4).unwrap())
+        .open_checked(&mut cx, FakeBackend::data_request(4).unwrap())
         .unwrap();
     let mut cassette = HostCallbackCassette::new();
     cassette.record_packet(StreamPacket::data(
@@ -152,7 +191,8 @@ fn host_browse_cards_cover_backend_devices_ports_and_missing_capabilities() {
 fn host_callback_queue_is_bounded_and_nonblocking() {
     let backend = RtpMidiBackend::new();
     let spec = RtpMidiBackend::source_spec("rtp-midi/test", 1).unwrap();
-    let port = backend.open_source(spec).unwrap();
+    let mut cx = authorized_cx();
+    let port = backend.open_source(&mut cx, spec).unwrap();
 
     assert_eq!(
         port.queue()
@@ -195,7 +235,8 @@ fn host_callback_queue_is_bounded_and_nonblocking() {
 fn rtp_midi_loopback_callback_uses_lan_control_envelope() {
     let backend = RtpMidiBackend::new();
     let spec = RtpMidiBackend::source_spec("rtp-midi/loopback", 4).unwrap();
-    let port = backend.open_source(spec).unwrap();
+    let mut cx = authorized_cx();
+    let port = backend.open_source(&mut cx, spec).unwrap();
 
     let envelope = port
         .receive_envelope_from_callback(9, note_packet(12))
@@ -264,6 +305,32 @@ fn host_callback_queue_accepts_matching_data_media() {
             .is_err()
     );
     assert_eq!(queue.drain(8).unwrap().len(), 1);
+}
+
+#[test]
+fn host_callback_queue_rejects_sink_stream_injection() {
+    let mut registry = HostBackendRegistry::new();
+    registry.register(FakeBackend::new()).unwrap();
+    let mut cx = authorized_cx();
+    let opened = registry
+        .open_checked(
+            &mut cx,
+            HostStreamConfigRequest::new(
+                fake_backend_symbol(),
+                Symbol::new("fake/pcm"),
+                StreamMedia::Pcm,
+                HostDirection::Output,
+                BufferPolicy::bounded(2).unwrap(),
+            ),
+        )
+        .unwrap();
+
+    let err = opened
+        .queue()
+        .callback_packet(StreamPacket::Pcm(PcmPacket::i16(1, 1, vec![0]).unwrap()))
+        .unwrap_err();
+
+    assert!(err.to_string().contains("sink stream"));
 }
 
 #[test]
@@ -342,8 +409,30 @@ fn host_open_plan_uses_device_effect_and_stream_capability() {
     let plan = spec.open_plan();
     assert_eq!(plan.backend(), &rtp_midi_backend_symbol());
     assert_eq!(plan.device(), spec.id());
-    assert_eq!(plan.effect_kind(), &stream_host_device_read_effect_kind());
+    assert_eq!(
+        plan.effect_kinds(),
+        &[stream_host_device_read_effect_kind()]
+    );
     assert_eq!(plan.requires(), &[stream_host_capability()]);
+}
+
+fn test_cx() -> Cx {
+    Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory))
+}
+
+fn authorized_cx() -> Cx {
+    let mut cx = test_cx();
+    cx.grant(stream_host_capability());
+    cx
+}
+
+fn recorded_effect_kinds(cx: &Cx) -> Vec<Symbol> {
+    cx.effect_ledger()
+        .records()
+        .iter()
+        .filter_map(|record| cx.effect_ledger().effect(&record.effect))
+        .map(|effect| effect.kind.clone())
+        .collect()
 }
 
 fn realtime_audio_config(media: StreamMedia, clock_domain: ClockDomain) -> HostStreamConfig {
@@ -394,6 +483,7 @@ impl HostStreamDriver for CountingDriver {
 #[test]
 fn rtp_midi_rejects_wrong_backend_or_media() {
     let backend = RtpMidiBackend::new();
+    let mut cx = authorized_cx();
     let wrong_backend = HostDeviceSpec::new(
         Symbol::new("bad"),
         Symbol::qualified("stream/host", "alsa"),
@@ -402,7 +492,7 @@ fn rtp_midi_rejects_wrong_backend_or_media() {
         Symbol::qualified("clock", "midi"),
         BufferPolicy::bounded(2).unwrap(),
     );
-    assert!(backend.open_source(wrong_backend).is_err());
+    assert!(backend.open_source(&mut cx, wrong_backend).is_err());
 
     let wrong_media = HostDeviceSpec::new(
         Symbol::new("audio"),
@@ -412,7 +502,7 @@ fn rtp_midi_rejects_wrong_backend_or_media() {
         Symbol::qualified("clock", "audio"),
         BufferPolicy::bounded(2).unwrap(),
     );
-    assert!(backend.open_source(wrong_media).is_err());
+    assert!(backend.open_source(&mut cx, wrong_media).is_err());
 }
 
 #[test]
@@ -420,7 +510,8 @@ fn rtp_midi_rejects_wrong_backend_or_media() {
 fn rtp_midi_device_smoke_test_is_ignored_by_default() {
     let backend = RtpMidiBackend::new();
     let spec = RtpMidiBackend::source_spec("rtp-midi/operator-smoke", 8).unwrap();
-    let port = backend.open_source(spec).unwrap();
+    let mut cx = authorized_cx();
+    let port = backend.open_source(&mut cx, spec).unwrap();
     port.receive_packet_from_callback(note_packet(0)).unwrap();
     assert_eq!(port.queue().drain(1).unwrap().len(), 1);
 }

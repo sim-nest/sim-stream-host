@@ -32,6 +32,12 @@ impl FakeBackend {
     pub fn new() -> Self {
         let backend = fake_backend_symbol();
         let data = fake_device("fake/data", StreamMedia::Data, HostDirection::Input, 8);
+        let data_duplex = fake_device(
+            "fake/data-duplex",
+            StreamMedia::Data,
+            HostDirection::Duplex,
+            8,
+        );
         let midi = fake_device("fake/midi", StreamMedia::Midi, HostDirection::Input, 8);
         let pcm = fake_device("fake/pcm", StreamMedia::Pcm, HostDirection::Output, 8);
         let ports = vec![
@@ -40,6 +46,12 @@ impl FakeBackend {
                 data.id(),
                 StreamMedia::Data,
                 HostDirection::Input,
+            ),
+            fake_port(
+                "fake/data-duplex/io",
+                data_duplex.id(),
+                StreamMedia::Data,
+                HostDirection::Duplex,
             ),
             fake_port(
                 "fake/midi/in",
@@ -66,9 +78,10 @@ impl FakeBackend {
                 HostBackendCapability::Offline,
                 HostBackendCapability::MidiInput,
                 HostBackendCapability::AudioOutput,
+                HostBackendCapability::Duplex,
             ]),
             inventory: HostDeviceInventory::new(backend)
-                .with_devices(vec![data, midi, pcm])
+                .with_devices(vec![data, data_duplex, midi, pcm])
                 .with_ports(ports),
         }
     }
@@ -80,6 +93,17 @@ impl FakeBackend {
             Symbol::new("fake/data"),
             StreamMedia::Data,
             HostDirection::Input,
+            BufferPolicy::bounded(capacity)?,
+        ))
+    }
+
+    /// Builds a data stream request for the fake duplex data device.
+    pub fn duplex_data_request(capacity: usize) -> Result<HostStreamConfigRequest> {
+        Ok(HostStreamConfigRequest::new(
+            fake_backend_symbol(),
+            Symbol::new("fake/data-duplex"),
+            StreamMedia::Data,
+            HostDirection::Duplex,
             BufferPolicy::bounded(capacity)?,
         ))
     }

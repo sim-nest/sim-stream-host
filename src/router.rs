@@ -3,11 +3,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use sim_kernel::{Error, Result};
+use sim_kernel::{Cx, Error, Result};
 
-use crate::HostOpenStream;
 use crate::placement::{AudioPlacementRequest, AudioSiteKey};
 use crate::site::AudioSite;
+use crate::{HostOpenPlan, HostOpenStream, stream_host_capability};
 
 /// Registry and dispatcher for audio placement sites.
 pub struct AudioRouter {
@@ -86,7 +86,34 @@ impl AudioRouter {
         }
     }
 
-    /// Opens a placement request through its registered audio site.
+    /// Opens a placement request through its registered audio site after
+    /// checking authority and recording the declared device effects.
+    pub fn open_placement_checked(
+        &self,
+        cx: &mut Cx,
+        request: AudioPlacementRequest,
+    ) -> Result<HostOpenStream> {
+        if !self.sites.contains_key(&request.site_key) {
+            return Err(Error::Eval(format!(
+                "no audio site registered for {:?}",
+                request.site_key
+            )));
+        }
+        HostOpenPlan::new(
+            request.stream_request.backend().clone(),
+            request.stream_request.device().clone(),
+            request.stream_request.direction().effect_kinds(),
+            vec![stream_host_capability()],
+        )
+        .enforce(cx)?;
+        self.open_placement(request)
+    }
+
+    /// Opens a placement request through its registered audio site via the
+    /// site-level compatibility dispatch path.
+    ///
+    /// Runtime and public host opens should use [`Self::open_placement_checked`]
+    /// so the request's authority and device effects are handled first.
     pub fn open_placement(&self, request: AudioPlacementRequest) -> Result<HostOpenStream> {
         self.sites
             .get(&request.site_key)

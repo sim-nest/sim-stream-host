@@ -6,6 +6,11 @@ use sim_lib_stream_core::{
     StreamCapability, StreamEnvelope, TransportProfile,
 };
 
+use crate::model::{
+    HostOpenPlan, stream_host_capability, stream_host_device_read_effect_kind,
+    stream_host_device_write_effect_kind,
+};
+
 const DEFAULT_BEATS_PER_BAR: u32 = 4;
 
 /// Stable runtime key for an audio evaluation site.
@@ -96,6 +101,20 @@ pub enum DeviceDirection {
     Duplex,
 }
 
+impl DeviceDirection {
+    /// Returns the device effects performed when this catalog direction opens.
+    pub fn effect_kinds(self) -> Vec<Symbol> {
+        match self {
+            Self::Input => vec![stream_host_device_read_effect_kind()],
+            Self::Output => vec![stream_host_device_write_effect_kind()],
+            Self::Duplex => vec![
+                stream_host_device_read_effect_kind(),
+                stream_host_device_write_effect_kind(),
+            ],
+        }
+    }
+}
+
 /// Catalog row for a host-visible stream device.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeviceRecord {
@@ -143,6 +162,16 @@ impl DeviceRecord {
         }
     }
 
+    /// Builds the host-open authority plan for this cataloged device.
+    pub fn open_plan(&self) -> HostOpenPlan {
+        HostOpenPlan::new(
+            self.plan_backend_symbol(),
+            self.id.clone(),
+            self.direction.effect_kinds(),
+            vec![stream_host_capability()],
+        )
+    }
+
     fn modeled(
         id: &str,
         name: impl Into<String>,
@@ -155,6 +184,13 @@ impl DeviceRecord {
             kind,
             direction,
             placement: Placement::Modeled,
+        }
+    }
+
+    fn plan_backend_symbol(&self) -> Symbol {
+        match &self.placement {
+            Placement::Modeled => Symbol::qualified("stream/host", "modeled-catalog"),
+            Placement::Hardware { transport } => transport.clone(),
         }
     }
 }
