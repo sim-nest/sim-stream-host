@@ -25,7 +25,20 @@ impl MidiLiveEvalSite {
             return Err(Error::Eval(format!("open_live: device '{id}' is not MIDI")));
         }
         let direction = live_direction(record.direction);
-        let session = LiveMidiSession::modeled(direction).map_err(live_error)?;
+        let session = match site.live_midi_session() {
+            Some(Ok(session)) => session,
+            Some(Err(error)) => {
+                site.close()?;
+                return Err(error);
+            }
+            None => LiveMidiSession::modeled(direction).map_err(live_error)?,
+        };
+        if session.direction() != direction {
+            site.close()?;
+            return Err(Error::Eval(format!(
+                "open_live: device '{id}' live session direction does not match catalog record"
+            )));
+        }
         Ok(Self {
             record,
             session,

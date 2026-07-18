@@ -41,7 +41,8 @@ pub use config::{
     HostClockInfo, HostLatencyInfo, HostReconnectPolicy, HostStreamConfig, HostStreamConfigRequest,
 };
 pub use config_probe::{
-    HostStreamConfigProbe, host_stream_config_probe_symbol, stream_host_config_lib_symbol,
+    HostStreamConfigProbe, hardware_inventory_probe_capability_symbol,
+    host_stream_config_probe_symbol, stream_host_config_lib_symbol,
 };
 pub use cookbook::fake_backend_demo;
 pub use eval_site::{DeviceProvider, StreamEvalSite};

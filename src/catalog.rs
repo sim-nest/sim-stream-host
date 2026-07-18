@@ -153,7 +153,7 @@ impl DeviceCatalog {
     /// Hardware records contribute their transport name. Modeled records keep
     /// the deterministic `modeled` fallback as the final candidate.
     pub fn audio_backend_names(&self) -> Result<Vec<String>> {
-        self.backend_names(DeviceKind::Audio)
+        self.backend_names(DeviceKind::Audio, true)
     }
 
     /// Returns safe MIDI backend candidate names from catalog records.
@@ -161,7 +161,17 @@ impl DeviceCatalog {
     /// Hardware records contribute their transport name. Modeled records keep
     /// the deterministic `modeled` fallback as the final candidate.
     pub fn midi_backend_names(&self) -> Result<Vec<String>> {
-        self.backend_names(DeviceKind::Midi)
+        self.backend_names(DeviceKind::Midi, true)
+    }
+
+    /// Returns audio backend candidate names for real hardware only.
+    pub fn audio_hardware_backend_names(&self) -> Result<Vec<String>> {
+        self.backend_names(DeviceKind::Audio, false)
+    }
+
+    /// Returns MIDI backend candidate names for real hardware only.
+    pub fn midi_hardware_backend_names(&self) -> Result<Vec<String>> {
+        self.backend_names(DeviceKind::Midi, false)
     }
 
     fn enumerate_kind(&self, kind: DeviceKind) -> Result<Vec<DeviceRecord>> {
@@ -172,7 +182,11 @@ impl DeviceCatalog {
             .collect())
     }
 
-    fn backend_names(&self, kind: DeviceKind) -> Result<Vec<String>> {
+    fn backend_names(
+        &self,
+        kind: DeviceKind,
+        include_modeled_fallback: bool,
+    ) -> Result<Vec<String>> {
         let mut names = Vec::new();
         let mut has_modeled = false;
         for record in self
@@ -185,7 +199,7 @@ impl DeviceCatalog {
                 Placement::Hardware { transport } => push_unique(&mut names, transport.name),
             }
         }
-        if has_modeled || names.is_empty() {
+        if include_modeled_fallback && (has_modeled || names.is_empty()) {
             push_unique(&mut names, "modeled");
         }
         Ok(names)

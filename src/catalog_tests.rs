@@ -1,17 +1,18 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 
 use sim_kernel::{
     AbiVersion, Cx, DefaultFactory, EagerPolicy, Export, Lib, LibManifest, LibTarget, Linker,
     LoadCx, Result, Symbol, Version,
 };
+use sim_lib_midi_live::{LiveMidiDirection, LiveMidiSession};
 
 use crate::{
-    DeviceCatalog, DeviceDirection, DeviceKind, Placement, StreamEvalSite,
-    audio_site_export_symbol, stream_host_capability,
+    DeviceCatalog, DeviceDirection, DeviceKind, DeviceProvider, DeviceRecord, Placement,
+    StreamEvalSite, audio_site_export_symbol, stream_host_capability,
 };
-
-#[cfg(any(feature = "rtmidi-hardware", feature = "ble-midi-hardware"))]
-use crate::{DeviceProvider, DeviceRecord};
 
 #[test]
 fn catalog_default_modeled_enumerates_midi_and_audio() {
@@ -124,6 +125,31 @@ fn catalog_open_live_modeled_midi_output_exposes_sink() {
 }
 
 #[test]
+fn catalog_open_live_hardware_midi_uses_provider_live_session() {
+    let live_opens = Arc::new(AtomicUsize::new(0));
+    let mut catalog = DeviceCatalog::new();
+    catalog.register(Box::new(FixtureLiveMidiProvider {
+        live_opens: Arc::clone(&live_opens),
+    }));
+    let mut cx = authorized_cx();
+
+    let mut live = catalog
+        .open_live_checked(&mut cx, &Symbol::new("midi/hardware/live-0"))
+        .unwrap();
+
+    assert_eq!(live_opens.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        live.placement(),
+        &Placement::Hardware {
+            transport: Symbol::new("fixture-midi"),
+        }
+    );
+    assert_eq!(live.source_mut().tpq(), 960);
+    assert!(live.sink_mut().is_some());
+    Box::new(live).close().unwrap();
+}
+
+#[test]
 fn catalog_open_live_non_midi_returns_error() {
     let catalog = DeviceCatalog::default_modeled();
     let mut cx = authorized_cx();
@@ -133,6 +159,68 @@ fn catalog_open_live_non_midi_returns_error() {
         .unwrap();
 
     assert!(format!("{err}").contains("is not MIDI"));
+}
+
+struct FixtureLiveMidiProvider {
+    live_opens: Arc<AtomicUsize>,
+}
+
+impl DeviceProvider for FixtureLiveMidiProvider {
+    fn enumerate(&self) -> sim_kernel::Result<Vec<DeviceRecord>> {
+        Ok(vec![fixture_live_midi_record()])
+    }
+
+    fn open(&self, id: &Symbol) -> sim_kernel::Result<Box<dyn StreamEvalSite>> {
+        let record = fixture_live_midi_record();
+        if &record.id != id {
+            return Err(sim_kernel::Error::Eval(format!(
+                "unknown fixture live MIDI port '{id}'"
+            )));
+        }
+        Ok(Box::new(FixtureLiveMidiSite {
+            record,
+            live_opens: Arc::clone(&self.live_opens),
+        }))
+    }
+}
+
+struct FixtureLiveMidiSite {
+    record: DeviceRecord,
+    live_opens: Arc<AtomicUsize>,
+}
+
+impl StreamEvalSite for FixtureLiveMidiSite {
+    fn placement(&self) -> &Placement {
+        &self.record.placement
+    }
+
+    fn device_record(&self) -> &DeviceRecord {
+        &self.record
+    }
+
+    fn live_midi_session(&self) -> Option<sim_kernel::Result<LiveMidiSession>> {
+        self.live_opens.fetch_add(1, Ordering::SeqCst);
+        Some(
+            LiveMidiSession::with_ring(960, 4, LiveMidiDirection::Duplex)
+                .map_err(|error| sim_kernel::Error::Eval(format!("fixture live MIDI: {error}"))),
+        )
+    }
+
+    fn close(self: Box<Self>) -> sim_kernel::Result<()> {
+        Ok(())
+    }
+}
+
+fn fixture_live_midi_record() -> DeviceRecord {
+    DeviceRecord {
+        id: Symbol::new("midi/hardware/live-0"),
+        display_name: "Fixture Live MIDI".to_owned(),
+        kind: DeviceKind::Midi,
+        direction: DeviceDirection::Duplex,
+        placement: Placement::Hardware {
+            transport: Symbol::new("fixture-midi"),
+        },
+    }
 }
 
 #[cfg(feature = "rtmidi-hardware")]

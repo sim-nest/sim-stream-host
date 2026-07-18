@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use sim_config::{ConfigProbe, ConfigProbeCaps, ConfigProbeRequest, ConfigProbeStatus, ProbeMode};
 use sim_kernel::{Error, Expr, Result, Symbol};
 
 use crate::{
-    DeviceCatalog, DeviceDirection, DeviceKind, DeviceProvider, DeviceRecord,
-    HostStreamConfigProbe, Placement, StreamEvalSite, stream_host_config_lib_symbol,
+    AudioDeviceCard, AudioRouter, AudioSiteKey, DeviceCatalog, DeviceDirection, DeviceKind,
+    DeviceProvider, DeviceRecord, FakeBackend, HostStreamConfigProbe, ModeledAudioSite, Placement,
+    StreamEvalSite, hardware_inventory_probe_capability_symbol, stream_host_config_lib_symbol,
 };
 
 #[test]
@@ -57,25 +60,16 @@ fn config_probe_real_requires_hardware_inventory_cap() {
     assert_eq!(
         report.status,
         ConfigProbeStatus::Denied {
-            capability: "hardware_inventory".to_owned()
+            capability: hardware_inventory_probe_capability_symbol().to_string()
         }
     );
     assert!(report.emitted_keys.is_empty());
 }
 
 #[test]
-fn config_probe_real_uses_safe_catalog_inventory() {
-    let mut catalog = DeviceCatalog::default_modeled();
-    catalog.register(Box::new(FixtureProvider));
-    let probe = HostStreamConfigProbe::new(catalog);
-    let request = ConfigProbeRequest {
-        mode: ProbeMode::Real,
-        caps: ConfigProbeCaps {
-            hardware_inventory: true,
-            ..ConfigProbeCaps::default()
-        },
-        ..modeled_request()
-    };
+fn config_probe_real_modeled_catalog_emits_no_hardware_candidates() {
+    let probe = HostStreamConfigProbe::modeled();
+    let request = real_request();
 
     let (layer, report) = probe.probe(&request);
 
@@ -84,21 +78,81 @@ fn config_probe_real_uses_safe_catalog_inventory() {
     let table = layer.dir.table(&stream_host_config_lib_symbol()).unwrap();
     assert_eq!(
         field(&table.table, "audio_backend_candidates"),
-        &Expr::List(vec![
-            Expr::String("cpal".to_owned()),
-            Expr::String("modeled".to_owned()),
-        ])
+        &Expr::List(Vec::new())
     );
     assert_eq!(
         field(&table.table, "midi_backend_candidates"),
-        &Expr::List(vec![
-            Expr::String("alsa-seq".to_owned()),
-            Expr::String("modeled".to_owned()),
-        ])
+        &Expr::List(Vec::new())
+    );
+    assert_eq!(
+        field(&table.table, "audio_backend_regex"),
+        &Expr::String("(?!)".to_owned())
+    );
+}
+
+#[test]
+fn config_probe_real_uses_hardware_catalog_inventory_without_modeled_fallback() {
+    let mut catalog = DeviceCatalog::default_modeled();
+    catalog.register(Box::new(FixtureProvider));
+    let probe = HostStreamConfigProbe::new(catalog);
+    let request = real_request();
+
+    let (layer, report) = probe.probe(&request);
+
+    assert_eq!(report.status, ConfigProbeStatus::Applied);
+    let layer = layer.unwrap();
+    let table = layer.dir.table(&stream_host_config_lib_symbol()).unwrap();
+    assert_eq!(
+        field(&table.table, "audio_backend_candidates"),
+        &Expr::List(vec![Expr::String("cpal".to_owned())])
+    );
+    assert_eq!(
+        field(&table.table, "midi_backend_candidates"),
+        &Expr::List(vec![Expr::String("alsa-seq".to_owned())])
     );
     assert_eq!(
         field(&table.table, "midi_backend_regex"),
-        &Expr::String("^(?:alsa-seq|modeled)$".to_owned())
+        &Expr::String("^(?:alsa-seq)$".to_owned())
+    );
+}
+
+#[test]
+fn config_probe_real_provider_hardware_preserves_provider_transport_name() {
+    let owner = Symbol::qualified("audio/provider", "cpal-fixture");
+    let mut router = AudioRouter::new();
+    router
+        .register_owned(
+            owner.clone(),
+            Arc::new(ModeledAudioSite::new(
+                AudioDeviceCard {
+                    key: AudioSiteKey::new("audio/cpal/provider-stereo-0"),
+                    display_name: "CPAL Provider Stereo 0".to_owned(),
+                    channels_out: 2,
+                    channels_in: 2,
+                    sample_rates: vec![44_100, 48_000],
+                    hardware_required: true,
+                },
+                Arc::new(FakeBackend::new()),
+            )),
+        )
+        .unwrap();
+    let mut catalog = DeviceCatalog::default_modeled();
+    catalog.register_provider_sites(&router);
+    let probe = HostStreamConfigProbe::new(catalog);
+    let request = real_request();
+
+    let (layer, report) = probe.probe(&request);
+
+    assert_eq!(report.status, ConfigProbeStatus::Applied);
+    let layer = layer.unwrap();
+    let table = layer.dir.table(&stream_host_config_lib_symbol()).unwrap();
+    assert_eq!(
+        field(&table.table, "audio_backend_candidates"),
+        &Expr::List(vec![Expr::String(owner.name.to_string())])
+    );
+    assert_eq!(
+        field(&table.table, "midi_backend_candidates"),
+        &Expr::List(Vec::new())
     );
 }
 
@@ -145,6 +199,17 @@ fn modeled_request() -> ConfigProbeRequest {
         lib: stream_host_config_lib_symbol(),
         mode: ProbeMode::Modeled,
         caps: ConfigProbeCaps::default(),
+    }
+}
+
+fn real_request() -> ConfigProbeRequest {
+    ConfigProbeRequest {
+        mode: ProbeMode::Real,
+        caps: ConfigProbeCaps {
+            hardware_inventory: true,
+            ..ConfigProbeCaps::default()
+        },
+        ..modeled_request()
     }
 }
 

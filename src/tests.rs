@@ -14,7 +14,7 @@ use sim_lib_stream_core::{
 };
 
 use crate::{
-    FakeBackend, HostBackendCapability, HostBackendRegistry, HostCallbackCassette,
+    FakeBackend, HostBackend, HostBackendCapability, HostBackendRegistry, HostCallbackCassette,
     HostCallbackQueue, HostClockInfo, HostDeviceSpec, HostDirection, HostLatencyInfo,
     HostOpenStream, HostStreamConfig, HostStreamConfigRequest, HostStreamDriver, RtpMidiBackend,
     fake_backend_symbol, rtp_midi_backend_symbol, stream_host_capability,
@@ -252,6 +252,46 @@ fn rtp_midi_loopback_callback_uses_lan_control_envelope() {
     );
     assert!(matches!(envelope.packet(), StreamPacket::Midi(_)));
     assert_eq!(port.queue().drain(8).unwrap().len(), 1);
+}
+
+#[test]
+fn rtp_midi_backend_open_rejects_unenumerated_device_id() {
+    let backend = RtpMidiBackend::new();
+    let request = HostStreamConfigRequest::new(
+        rtp_midi_backend_symbol(),
+        Symbol::new("rtp-midi/unlisted"),
+        StreamMedia::Midi,
+        HostDirection::Input,
+        BufferPolicy::bounded(4).unwrap(),
+    )
+    .with_clock(ClockDomain::MidiTick.symbol());
+
+    let err = match HostBackend::open(&backend, request) {
+        Ok(_) => panic!("RTP-MIDI should reject unenumerated device ids"),
+        Err(err) => err,
+    };
+
+    assert!(err.to_string().contains("unknown RTP-MIDI device"));
+}
+
+#[test]
+fn rtp_midi_backend_open_accepts_enumerated_device_id() {
+    let backend = RtpMidiBackend::new();
+    let opened = HostBackend::open(
+        &backend,
+        HostStreamConfigRequest::new(
+            rtp_midi_backend_symbol(),
+            Symbol::new("rtp-midi/default"),
+            StreamMedia::Midi,
+            HostDirection::Input,
+            BufferPolicy::bounded(4).unwrap(),
+        )
+        .with_clock(ClockDomain::MidiTick.symbol()),
+    )
+    .unwrap();
+
+    assert_eq!(opened.config().device(), &Symbol::new("rtp-midi/default"));
+    opened.close().unwrap();
 }
 
 #[test]

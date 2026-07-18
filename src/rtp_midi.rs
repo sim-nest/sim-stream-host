@@ -105,6 +105,15 @@ impl RtpMidiBackend {
             queue: HostCallbackQueue::new(stream),
         })
     }
+
+    fn device_for_request(&self, request: &HostStreamConfigRequest) -> Result<HostDeviceSpec> {
+        <Self as HostBackend>::enumerate(self)?
+            .devices()
+            .iter()
+            .find(|device| device.id() == request.device())
+            .cloned()
+            .ok_or_else(|| Error::Eval(format!("unknown RTP-MIDI device {}", request.device())))
+    }
 }
 
 impl HostBackend for RtpMidiBackend {
@@ -133,16 +142,17 @@ impl HostBackend for RtpMidiBackend {
                 request.backend()
             )));
         }
-        if request.media() != StreamMedia::Midi {
+        let device = self.device_for_request(&request)?;
+        if device.media() != request.media() {
             return Err(Error::TypeMismatch {
                 expected: "MIDI host stream request",
                 found: "non-MIDI host stream request",
             });
         }
-        if request.direction() == HostDirection::Output {
+        if device.direction() != request.direction() {
             return Err(Error::TypeMismatch {
                 expected: "RTP-MIDI input or duplex stream request",
-                found: "output-only host stream request",
+                found: "request direction for another RTP-MIDI device",
             });
         }
         let clock = HostClockInfo::new(request.clock().clone(), None, true);

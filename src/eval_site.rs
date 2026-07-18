@@ -1,6 +1,7 @@
 //! Shared stream evaluation-site traits for cataloged host devices.
 
 use sim_kernel::{Result, Symbol};
+use sim_lib_midi_live::LiveMidiSession;
 
 use crate::placement::{DeviceRecord, Placement};
 
@@ -11,6 +12,12 @@ pub trait StreamEvalSite: Send {
 
     /// Returns the catalog row that opened this site.
     fn device_record(&self) -> &DeviceRecord;
+
+    /// Returns a provider-owned live MIDI session for this site, when opening
+    /// the site also opened a real MIDI transport.
+    fn live_midi_session(&self) -> Option<Result<LiveMidiSession>> {
+        None
+    }
 
     /// Closes the site.
     fn close(self: Box<Self>) -> Result<()>;

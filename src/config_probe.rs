@@ -30,6 +30,11 @@ pub fn host_stream_config_probe_symbol() -> Symbol {
     Symbol::qualified("config-probe", "stream-host")
 }
 
+/// Returns the stable capability id required for real hardware inventory probes.
+pub fn hardware_inventory_probe_capability_symbol() -> Symbol {
+    Symbol::qualified("config-probe-capability", "hardware-inventory")
+}
+
 /// Safe config probe for stream-host audio and MIDI defaults.
 pub struct HostStreamConfigProbe {
     catalog: DeviceCatalog,
@@ -80,7 +85,7 @@ impl ConfigProbe for HostStreamConfigProbe {
                     self.symbol(),
                     request,
                     ConfigProbeStatus::Denied {
-                        capability: "hardware_inventory".to_owned(),
+                        capability: hardware_inventory_probe_capability_symbol().to_string(),
                     },
                     &[],
                 ),
@@ -133,11 +138,11 @@ impl HostStreamConfigProbe {
     fn real_candidates(&self) -> Result<(Vec<String>, Vec<String>), String> {
         let audio = self
             .catalog
-            .audio_backend_names()
+            .audio_hardware_backend_names()
             .map_err(|error| format!("audio backend inventory failed: {error}"))?;
         let midi = self
             .catalog
-            .midi_backend_names()
+            .midi_hardware_backend_names()
             .map_err(|error| format!("MIDI backend inventory failed: {error}"))?;
         Ok((audio, midi))
     }
