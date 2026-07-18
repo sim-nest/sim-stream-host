@@ -7,7 +7,7 @@ use sim_kernel::{
 
 use crate::{
     DeviceCatalog, DeviceDirection, DeviceKind, Placement, StreamEvalSite,
-    audio_device_export_symbol, stream_host_capability,
+    audio_site_export_symbol, stream_host_capability,
 };
 
 #[cfg(any(feature = "rtmidi-hardware", feature = "ble-midi-hardware"))]
@@ -267,7 +267,7 @@ impl ModeledBackendLib {
     }
 
     fn device_symbol(&self) -> Symbol {
-        audio_device_export_symbol(self.transport)
+        audio_site_export_symbol(self.transport)
     }
 }
 
@@ -280,14 +280,17 @@ impl Lib for ModeledBackendLib {
             target: LibTarget::HostRegistered,
             requires: Vec::new(),
             capabilities: Vec::new(),
-            exports: vec![Export::Value {
+            exports: vec![Export::Site {
                 symbol: self.device_symbol(),
+                runtime_id: None,
             }],
         }
     }
 
     fn load(&self, cx: &mut LoadCx, linker: &mut Linker) -> Result<()> {
-        linker.value(self.device_symbol(), cx.factory().bool(true)?)
+        linker
+            .site_value(self.device_symbol(), cx.factory().bool(true)?)
+            .map(|_| ())
     }
 }
 

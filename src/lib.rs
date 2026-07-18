@@ -36,7 +36,7 @@ pub use audio_provider::ModeledAudioProvider;
 pub use backend::{HostBackend, HostOpenStream, HostStreamDriver};
 pub use capability::{HostBackendCapability, missing_capability_card_expr};
 pub use cassette::HostCallbackCassette;
-pub use catalog::{DeviceCatalog, audio_device_export_symbol};
+pub use catalog::{DeviceCatalog, audio_device_export_symbol, audio_site_export_symbol};
 pub use config::{
     HostClockInfo, HostLatencyInfo, HostReconnectPolicy, HostStreamConfig, HostStreamConfigRequest,
 };
@@ -61,14 +61,14 @@ pub use placement::{
     lan_pinned_sample_experimental_diagnostic, lan_pinned_sample_refusal_diagnostic,
 };
 pub use provider::{
-    AUDIO_PROVIDER_ABI_VERSION, AUDIO_PROVIDER_ENTRY_V1, AudioProviderEntries, AudioProviderEntry,
-    AudioProviderHost, AudioProviderRegistrar, RouterAudioProviderRegistrar,
+    AUDIO_PROVIDER_ABI_VERSION, AUDIO_PROVIDER_ENTRY_V1, AudioProviderEntry, AudioProviderHost,
+    AudioProviderProofEntries, AudioProviderRegistrar, RouterAudioProviderRegistrar,
     native_audio_provider_capability,
 };
 pub use queue::HostCallbackQueue;
 pub use registry::HostBackendRegistry;
 pub use ring::{ProcessRingPush, ProcessRingSnapshot, ProcessSharedRing};
-pub use router::AudioRouter;
+pub use router::{AudioRouter, RegisteredAudioSite};
 #[cfg(feature = "rtp-midi")]
 pub use rtp_midi::{RtpMidiBackend, RtpMidiPort, rtp_midi_backend_symbol};
 pub use site::{AudioSite, ModeledAudioSite};

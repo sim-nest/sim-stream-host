@@ -3,15 +3,24 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use sim_kernel::{Cx, Error, Result};
+use sim_kernel::{Cx, Error, Result, Symbol};
 
 use crate::placement::{AudioPlacementRequest, AudioSiteKey};
 use crate::site::AudioSite;
 use crate::{HostOpenPlan, HostOpenStream, stream_host_capability};
 
+/// A router row for an audio site and the provider that owns it.
+#[derive(Clone)]
+pub struct RegisteredAudioSite {
+    /// Provider or local fixture that owns this site key.
+    pub owner: Symbol,
+    /// Runtime-openable audio site.
+    pub site: Arc<dyn AudioSite>,
+}
+
 /// Registry and dispatcher for audio placement sites.
 pub struct AudioRouter {
-    sites: HashMap<AudioSiteKey, Arc<dyn AudioSite>>,
+    sites: HashMap<AudioSiteKey, RegisteredAudioSite>,
 }
 
 impl Default for AudioRouter {
@@ -28,14 +37,64 @@ impl AudioRouter {
         }
     }
 
-    /// Registers or replaces a site by its stable key.
+    /// Registers a local modeled site by its stable key.
+    ///
+    /// Provider loading uses [`Self::register_owned`] so duplicate site keys can
+    /// be reported as load errors instead of silently replacing an owner.
     pub fn register(&mut self, site: Arc<dyn AudioSite>) {
-        self.sites.insert(site.key().clone(), site);
+        self.register_owned(local_audio_site_owner_symbol(), site)
+            .expect("duplicate local audio site key");
+    }
+
+    /// Registers a provider-owned site by its stable key.
+    pub fn register_owned(&mut self, owner: Symbol, site: Arc<dyn AudioSite>) -> Result<()> {
+        let key = site.key().clone();
+        if self.sites.contains_key(&key) {
+            return Err(Error::Eval(format!(
+                "audio site {} is already registered",
+                key.0
+            )));
+        }
+        self.sites.insert(key, RegisteredAudioSite { owner, site });
+        Ok(())
+    }
+
+    /// Explicitly reloads a provider-owned site, replacing only that owner's row.
+    pub fn reload_owned(&mut self, owner: Symbol, site: Arc<dyn AudioSite>) -> Result<()> {
+        let key = site.key().clone();
+        if let Some(existing) = self.sites.get(&key)
+            && existing.owner != owner
+        {
+            return Err(Error::Eval(format!(
+                "audio site {} is already owned by {}",
+                key.0, existing.owner
+            )));
+        }
+        self.sites.insert(key, RegisteredAudioSite { owner, site });
+        Ok(())
+    }
+
+    /// Removes every site owned by `owner`, returning the removed row count.
+    pub fn unregister_owner(&mut self, owner: &Symbol) -> usize {
+        let before = self.sites.len();
+        self.sites
+            .retain(|_, registered| &registered.owner != owner);
+        before - self.sites.len()
     }
 
     /// Returns an audio site by key.
     pub fn site(&self, key: &AudioSiteKey) -> Option<&Arc<dyn AudioSite>> {
-        self.sites.get(key)
+        self.sites.get(key).map(|registered| &registered.site)
+    }
+
+    /// Returns the provider owner for a registered audio site.
+    pub fn site_owner(&self, key: &AudioSiteKey) -> Option<&Symbol> {
+        self.sites.get(key).map(|registered| &registered.owner)
+    }
+
+    /// Iterates over registered audio site rows.
+    pub fn registered_sites(&self) -> impl Iterator<Item = &RegisteredAudioSite> {
+        self.sites.values()
     }
 
     /// Iterates over registered audio site keys.
@@ -52,14 +111,14 @@ impl AudioRouter {
         let mut keys = self
             .sites
             .values()
-            .filter(|site| {
-                let card = site.card();
+            .filter(|registered| {
+                let card = registered.site.card();
                 card.channels_out >= min_channels_out
                     && preferred_rates
                         .iter()
                         .any(|rate| card.sample_rates.contains(rate))
             })
-            .map(|site| site.key().clone())
+            .map(|registered| registered.site.key().clone())
             .collect::<Vec<_>>();
         keys.sort_by_key(|key| key.0.to_string());
         keys
@@ -123,6 +182,11 @@ impl AudioRouter {
                     request.site_key
                 ))
             })?
+            .site
             .open(request.stream_request)
     }
+}
+
+fn local_audio_site_owner_symbol() -> Symbol {
+    Symbol::qualified("audio/provider", "local-modeled")
 }

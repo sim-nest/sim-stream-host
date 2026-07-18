@@ -148,6 +148,11 @@ impl DeviceRecord {
 
     /// Builds a modeled audio record from an audio device card.
     pub fn modeled_audio_from_card(card: &AudioDeviceCard) -> Self {
+        Self::audio_from_card(card, Placement::Modeled)
+    }
+
+    /// Builds an audio record from an audio device card and explicit placement.
+    pub fn audio_from_card(card: &AudioDeviceCard, placement: Placement) -> Self {
         let direction = match (card.channels_in > 0, card.channels_out > 0) {
             (true, true) => DeviceDirection::Duplex,
             (true, false) => DeviceDirection::Input,
@@ -158,7 +163,7 @@ impl DeviceRecord {
             display_name: card.display_name.clone(),
             kind: DeviceKind::Audio,
             direction,
-            placement: Placement::Modeled,
+            placement,
         }
     }
 
