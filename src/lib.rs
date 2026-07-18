@@ -35,7 +35,7 @@ mod site;
 pub use audio_provider::ModeledAudioProvider;
 pub use backend::{HostBackend, HostOpenStream, HostStreamDriver};
 pub use capability::{HostBackendCapability, missing_capability_card_expr};
-pub use cassette::HostCallbackCassette;
+pub use cassette::{HostCallbackCassette, HostCallbackReplayReport};
 pub use catalog::{DeviceCatalog, audio_device_export_symbol, audio_site_export_symbol};
 pub use config::{
     HostClockInfo, HostLatencyInfo, HostReconnectPolicy, HostStreamConfig, HostStreamConfigRequest,

@@ -15,9 +15,9 @@ use sim_lib_stream_core::{
 
 use crate::{
     FakeBackend, HostBackend, HostBackendCapability, HostBackendRegistry, HostCallbackCassette,
-    HostCallbackQueue, HostClockInfo, HostDeviceSpec, HostDirection, HostLatencyInfo,
-    HostOpenStream, HostStreamConfig, HostStreamConfigRequest, HostStreamDriver, RtpMidiBackend,
-    fake_backend_symbol, rtp_midi_backend_symbol, stream_host_capability,
+    HostCallbackQueue, HostCallbackReplayReport, HostClockInfo, HostDeviceSpec, HostDirection,
+    HostLatencyInfo, HostOpenStream, HostStreamConfig, HostStreamConfigRequest, HostStreamDriver,
+    RtpMidiBackend, fake_backend_symbol, rtp_midi_backend_symbol, stream_host_capability,
     stream_host_device_read_effect_kind, stream_host_device_write_effect_kind,
 };
 
@@ -147,9 +147,16 @@ fn host_callback_cassette_replays_callback_timeline() {
         .unwrap();
     let cassette = HostCallbackCassette::from_stream_cassette(&shared).unwrap();
 
-    cassette.replay(opened.queue()).unwrap();
+    let report = cassette.replay(opened.queue()).unwrap();
 
     let replayed = opened.queue().drain(4).unwrap();
+    assert_eq!(
+        report,
+        HostCallbackReplayReport {
+            accepted: 2,
+            ..HostCallbackReplayReport::default()
+        }
+    );
     assert_eq!(replayed.len(), 2);
     assert_eq!(
         replayed[0].packet(),
@@ -157,6 +164,67 @@ fn host_callback_cassette_replays_callback_timeline() {
             Symbol::qualified("stream/data", "expr"),
             Expr::String("first".to_owned()),
         )
+    );
+}
+
+#[test]
+fn host_callback_cassette_replay_reports_dropped_newest() {
+    let mut registry = HostBackendRegistry::new();
+    registry.register(FakeBackend::new()).unwrap();
+    let mut cx = authorized_cx();
+    let opened = registry
+        .open_checked(&mut cx, FakeBackend::data_request(1).unwrap())
+        .unwrap();
+    let mut cassette = HostCallbackCassette::new();
+    cassette.record_packet(StreamPacket::data(
+        Symbol::qualified("stream/data", "expr"),
+        Expr::String("first".to_owned()),
+    ));
+    cassette.record_packet(StreamPacket::data(
+        Symbol::qualified("stream/data", "expr"),
+        Expr::String("second".to_owned()),
+    ));
+
+    let report = cassette.replay(opened.queue()).unwrap();
+
+    assert_eq!(
+        report,
+        HostCallbackReplayReport {
+            accepted: 1,
+            dropped_newest: 1,
+            ..HostCallbackReplayReport::default()
+        }
+    );
+    assert_eq!(opened.queue().drain(4).unwrap().len(), 1);
+}
+
+#[test]
+fn host_callback_cassette_replay_reports_closed_queue() {
+    let mut registry = HostBackendRegistry::new();
+    registry.register(FakeBackend::new()).unwrap();
+    let mut cx = authorized_cx();
+    let opened = registry
+        .open_checked(&mut cx, FakeBackend::data_request(2).unwrap())
+        .unwrap();
+    let mut cassette = HostCallbackCassette::new();
+    cassette.record_packet(StreamPacket::data(
+        Symbol::qualified("stream/data", "expr"),
+        Expr::String("first".to_owned()),
+    ));
+    cassette.record_packet(StreamPacket::data(
+        Symbol::qualified("stream/data", "expr"),
+        Expr::String("second".to_owned()),
+    ));
+
+    opened.close().unwrap();
+    let report = cassette.replay(opened.queue()).unwrap();
+
+    assert_eq!(
+        report,
+        HostCallbackReplayReport {
+            closed: 2,
+            ..HostCallbackReplayReport::default()
+        }
     );
 }
 
@@ -411,6 +479,43 @@ fn realtime_local_audio_close_shutdowns_attached_driver() {
     .unwrap();
 
     opened.close().unwrap();
+
+    assert_eq!(shutdowns.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn realtime_local_audio_clone_close_close_shutdowns_driver_once() {
+    let shutdowns = Arc::new(AtomicUsize::new(0));
+    let driver: Rc<dyn HostStreamDriver> = Rc::new(CountingDriver {
+        shutdowns: Arc::clone(&shutdowns),
+    });
+    let opened = HostOpenStream::new_realtime_local_audio_with_driver(
+        realtime_audio_config(StreamMedia::Pcm, ClockDomain::Sample),
+        driver,
+    )
+    .unwrap();
+    let cloned = opened.clone();
+
+    opened.close().unwrap();
+    cloned.close().unwrap();
+
+    assert_eq!(shutdowns.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn realtime_local_audio_close_then_cancel_shutdowns_driver_once() {
+    let shutdowns = Arc::new(AtomicUsize::new(0));
+    let driver: Rc<dyn HostStreamDriver> = Rc::new(CountingDriver {
+        shutdowns: Arc::clone(&shutdowns),
+    });
+    let opened = HostOpenStream::new_realtime_local_audio_with_driver(
+        realtime_audio_config(StreamMedia::Pcm, ClockDomain::Sample),
+        driver,
+    )
+    .unwrap();
+
+    opened.close().unwrap();
+    opened.cancel().unwrap();
 
     assert_eq!(shutdowns.load(Ordering::SeqCst), 1);
 }
