@@ -80,6 +80,7 @@ crates.io. The public validation gate is:
 
 ```bash
 cargo fmt --all --check
+cargo run -p xtask -- check-file-sizes
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo doc --workspace --no-deps
@@ -98,3 +99,9 @@ cargo run -p xtask -- simdoc --check
 - Diagrams: `docs/diagrams/src/` and `docs/diagrams/generated/`
 
 The same command writes split contract files under `docs/generated/`.
+
+## File Size Gate
+
+`cargo run -p xtask -- check-file-sizes` scans Rust source files and fails when
+an entrypoint (`lib.rs`, `main.rs`, or `mod.rs`) exceeds 250 lines or any other
+Rust source file exceeds 700 lines.
