@@ -1,6 +1,6 @@
 [package]
 name = "sim-lib-stream-host"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 license = "MPL-2.0"
 description = "Host-device stream backend substrate for SIM streams."
@@ -26,7 +26,7 @@ unsafe_code = "forbid"
 
 [dependencies]
 sim-config = { version = "0.1.1" }
-sim-kernel = { version = "0.1.0" }
+sim-kernel = { version = "0.1.4" }
 sim-lib-midi-core = { version = "0.1.0" }
 sim-lib-midi-live = { version = "0.1.0" }
 sim-lib-stream-core = { version = "0.1.0" }
@@ -40,7 +40,7 @@ ble-midi-hardware = []
 [dev-dependencies]
 sim-codec = { version = "0.1.0" }
 sim-codec-lisp = { version = "0.1.0" }
-sim-kernel = { version = "0.1", features = ["test-support"] }
+sim-kernel = { version = "0.1.4", features = ["test-support"] }
 sim-lib-numbers-i64 = { version = "0.1.1" }
 
 [lints]
