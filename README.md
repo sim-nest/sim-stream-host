@@ -75,11 +75,16 @@ so default validation stays hardware-free.
 
 ## Validation
 
-These commands run in the constellation workspace; only `sim-kernel` builds from
-a lone clone today (see `DEVELOPING.md` in `sim-sdk`).
+This repository builds standalone against the published SIM crates on
+crates.io. The public validation gate is:
 
 ```bash
-cargo fmt --check && cargo test --workspace && cargo clippy --workspace -- -D warnings && cargo doc --workspace --no-deps
+cargo fmt --all --check
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo doc --workspace --no-deps
+cargo clippy --workspace --all-features --all-targets -- -D warnings
+cargo test --workspace --all-features
 cargo run -p xtask -- simdoc --check
 ```
 

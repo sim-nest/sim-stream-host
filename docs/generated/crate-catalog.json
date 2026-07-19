@@ -3,7 +3,7 @@
   "package_count": 2,
   "packages": [
     {
-      "description": "Host-device stream backend substrate for STREAM 6.",
+      "description": "Host-device stream backend substrate for SIM streams.",
       "generated_readme": false,
       "manifest": "Cargo.toml",
       "name": "sim-lib-stream-host",

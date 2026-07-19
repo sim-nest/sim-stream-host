@@ -79,6 +79,8 @@ impl<E: std::fmt::Display> DemoGrantResult for std::result::Result<(), E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sim_codec::encode_with_codec;
+    use sim_codec_lisp::LispCodecLib;
     use sim_lib_stream_core::StreamMedia;
 
     #[test]
@@ -97,5 +99,34 @@ mod tests {
             .open_checked(&mut cx, FakeBackend::data_request(4).expect("request"))
             .expect("open");
         assert_eq!(opened.config().media(), StreamMedia::Data);
+    }
+
+    #[test]
+    fn fake_backend_recipe_expectation_matches_demo_output() {
+        let mut cx = authorized_demo_cx();
+        cx.load_lib(&sim_lib_numbers_i64::I64NumbersLib::new())
+            .expect("load i64 numbers");
+        let lisp = Symbol::qualified("codec", "lisp");
+        let codec = LispCodecLib::new(cx.registry_mut().fresh_codec_id()).expect("lisp codec");
+        cx.load_lib(&codec).expect("load lisp codec");
+
+        let rendered = encode_with_codec(&mut cx, &lisp, &fake_backend_demo(), Default::default())
+            .expect("encode fake backend demo")
+            .into_text()
+            .expect("lisp codec emits text");
+        assert_eq!(recipe_expected_result(), rendered);
+    }
+
+    fn recipe_expected_result() -> String {
+        let recipe = include_str!("../recipes/01-basics/fake-backend/recipe.toml");
+        let result_line = recipe
+            .lines()
+            .find(|line| line.starts_with("result = "))
+            .expect("recipe result line");
+        result_line
+            .strip_prefix("result = \"")
+            .and_then(|line| line.strip_suffix('"'))
+            .expect("quoted recipe result")
+            .replace("\\\"", "\"")
     }
 }

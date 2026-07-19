@@ -1,6 +1,5 @@
-# Fake host backend (descriptor)
+# Fake host backend
 
-Documents the stream host's fake backend: a modeled device inventory with a callback queue and
-cassette replay, standing in for real audio hardware (`no-device`). The stream host binds real
-devices and drives callbacks outside the cookbook sandbox eval stack, so the fake backend is
-documented rather than run.
+Runs the stream host's deterministic fake backend in the cookbook sandbox. The setup opens the
+modeled data device with a demo host grant, reports the backend, device, media, clock, inventory
+counts, and bounded callback queue, and confirms that no hardware is required.

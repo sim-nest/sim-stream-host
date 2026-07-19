@@ -3,7 +3,7 @@ name = "sim-lib-stream-host"
 version = "0.1.1"
 edition = "2024"
 license = "MPL-2.0"
-description = "Host-device stream backend substrate for STREAM 6."
+description = "Host-device stream backend substrate for SIM streams."
 readme = "README.md"
 publish = true
 repository = "https://github.com/sim-nest/sim-stream-host"
@@ -38,7 +38,10 @@ rtmidi-hardware = []
 ble-midi-hardware = []
 
 [dev-dependencies]
+sim-codec = { version = "0.1.0" }
+sim-codec-lisp = { version = "0.1.0" }
 sim-kernel = { version = "0.1", features = ["test-support"] }
+sim-lib-numbers-i64 = { version = "0.1.1" }
 
 [lints]
 workspace = true

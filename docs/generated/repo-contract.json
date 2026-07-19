@@ -1,11 +1,17 @@
 {
-  "card_count": 2,
+  "card_count": 3,
   "cards": [
     {
       "id": "browse/catalog",
       "kind": "browse-root",
       "owner": "workspace",
       "summary": "root browse catalog"
+    },
+    {
+      "id": "cookbook/stream-host",
+      "kind": "cookbook-recipe",
+      "owner": "sim-lib-stream-host",
+      "summary": "Host backend inventory, callback queues, fake devices, and cassettes."
     },
     {
       "id": "registry/catalog",
@@ -34,7 +40,7 @@
     {
       "crate_name": "sim_lib_stream_host",
       "dependencies": [],
-      "description": "Host-device stream backend substrate for STREAM 6.",
+      "description": "Host-device stream backend substrate for SIM streams.",
       "features": [
         {
           "edges": [],
@@ -114,10 +120,10 @@
     "generated_by": "cargo run -p xtask -- simdoc",
     "generation_timestamp": "2026-07-15T00:40:48+02:00",
     "generator": "xtask repo-contract v1",
-    "git_commit": "537a31fc4ced9ae79bbe1d0e7684462d8fa13636",
+    "git_commit": "ce609de2bd8d4e07ef3b941bc1ec62fc364cfb90",
     "repo": "sim-stream-host",
     "schema": "sim.provenance.v1",
-    "source_commit": "537a31fc4ced9ae79bbe1d0e7684462d8fa13636",
+    "source_commit": "ce609de2bd8d4e07ef3b941bc1ec62fc364cfb90",
     "source_remote": "https://github.com/sim-nest/sim-stream-host",
     "validation_commands": [
       "cargo fmt --all --check",
@@ -130,7 +136,7 @@
       "cargo run -p xtask -- validation-matrix --check --repo .",
       "cargo run -p xtask -- crate-catalog --check --repo ."
     ],
-    "workspace_hash": "cdc4ad272602354d",
+    "workspace_hash": "be5a6122a18da1e9",
     "workspace_hash_algorithm": "fnv1a64",
     "workspace_hash_input_count": 33,
     "workspace_hash_inputs": [
@@ -169,6 +175,27 @@
       "xtask/Cargo.toml"
     ]
   },
-  "recipe_book_count": 0,
-  "recipes": []
+  "recipe_book_count": 1,
+  "recipes": [
+    {
+      "book": "stream-host",
+      "book_toml": "recipes/book.toml",
+      "card_id": "cookbook/stream-host",
+      "group": "workspace",
+      "package": "sim-lib-stream-host",
+      "recipe_count": 1,
+      "recipes": [
+        {
+          "card_id": "stream-host/01-basics/fake-backend",
+          "codec": "lisp",
+          "id": "fake-backend",
+          "package": "sim-lib-stream-host",
+          "recipe_toml": "recipes/01-basics/fake-backend/recipe.toml",
+          "title": "Fake host backend"
+        }
+      ],
+      "summary": "Host backend inventory, callback queues, fake devices, and cassettes.",
+      "title": "Stream Host"
+    }
+  ]
 }

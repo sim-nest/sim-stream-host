@@ -1,11 +1,17 @@
 {
-  "card_count": 2,
+  "card_count": 3,
   "cards": [
     {
       "id": "browse/catalog",
       "kind": "browse-root",
       "owner": "workspace",
       "summary": "root browse catalog"
+    },
+    {
+      "id": "cookbook/stream-host",
+      "kind": "cookbook-recipe",
+      "owner": "sim-lib-stream-host",
+      "summary": "Host backend inventory, callback queues, fake devices, and cassettes."
     },
     {
       "id": "registry/catalog",
