@@ -4,9 +4,10 @@ use sim_config::{ConfigProbe, ConfigProbeCaps, ConfigProbeRequest, ConfigProbeSt
 use sim_kernel::{Error, Expr, Result, Symbol};
 
 use crate::{
-    AudioDeviceCard, AudioRouter, AudioSiteKey, DeviceCatalog, DeviceDirection, DeviceKind,
-    DeviceProvider, DeviceRecord, FakeBackend, HostStreamConfigProbe, ModeledAudioSite, Placement,
-    StreamEvalSite, hardware_inventory_probe_capability_symbol, stream_host_config_lib_symbol,
+    AudioDeviceCard, AudioRouter, AudioSiteKey, CatalogDeviceProvider, DeviceCatalog,
+    DeviceDirection, DeviceKind, DeviceRecord, FakeBackend, HostStreamConfigProbe,
+    ModeledAudioSite, Placement, StreamEvalSite, hardware_inventory_probe_capability_symbol,
+    stream_host_config_lib_symbol,
 };
 
 #[test]
@@ -235,7 +236,7 @@ fn number_text(expr: &Expr) -> &str {
 
 struct FixtureProvider;
 
-impl DeviceProvider for FixtureProvider {
+impl CatalogDeviceProvider for FixtureProvider {
     fn enumerate(&self) -> Result<Vec<DeviceRecord>> {
         Ok(vec![
             DeviceRecord {
@@ -266,7 +267,7 @@ impl DeviceProvider for FixtureProvider {
 
 struct FailingProvider;
 
-impl DeviceProvider for FailingProvider {
+impl CatalogDeviceProvider for FailingProvider {
     fn enumerate(&self) -> Result<Vec<DeviceRecord>> {
         Err(Error::Eval("fixture inventory failed".to_owned()))
     }

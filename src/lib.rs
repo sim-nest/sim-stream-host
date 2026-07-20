@@ -16,6 +16,7 @@ mod catalog;
 mod config;
 mod config_probe;
 pub mod cookbook;
+mod device;
 mod eval_site;
 mod fake;
 mod inventory;
@@ -45,7 +46,11 @@ pub use config_probe::{
     host_stream_config_probe_symbol, stream_host_config_lib_symbol,
 };
 pub use cookbook::fake_backend_demo;
-pub use eval_site::{DeviceProvider, StreamEvalSite};
+pub use device::{
+    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSample, DeviceSession,
+    StubProvider, StubSession, device_sample_kind_symbol, poll_device_sample,
+};
+pub use eval_site::{DeviceProvider as CatalogDeviceProvider, StreamEvalSite};
 pub use fake::{FakeBackend, fake_backend_symbol};
 pub use inventory::{HostDeviceInventory, HostPortSpec};
 pub use midi_live_eval_site::MidiLiveEvalSite;
@@ -56,10 +61,11 @@ pub use model::{
 };
 pub use placement::{
     AudioDeviceCard, AudioPlacementRequest, AudioSiteKey, DeviceDirection, DeviceKind,
-    DeviceRecord, LanPlacementMode, LanPlacementReport, LanPlacementRequest, Placement,
-    lan_bar_delay_mode_symbol, lan_experimental_remote_sample_capability,
-    lan_jitter_buffered_mode_symbol, lan_peer_site_symbol,
-    lan_pinned_sample_experimental_diagnostic, lan_pinned_sample_refusal_diagnostic,
+    DevicePlacement, DeviceRecord, LanPlacementMode, LanPlacementReport, LanPlacementRequest,
+    Placement, PlacementError, lan_bar_delay_mode_symbol,
+    lan_experimental_remote_sample_capability, lan_jitter_buffered_mode_symbol,
+    lan_peer_site_symbol, lan_pinned_sample_experimental_diagnostic,
+    lan_pinned_sample_refusal_diagnostic,
 };
 pub use provider::{
     AUDIO_PROVIDER_ABI_VERSION, AUDIO_PROVIDER_ENTRY_V1, AudioProviderEntry, AudioProviderHost,
@@ -72,12 +78,14 @@ pub use ring::{ProcessRingPush, ProcessRingSnapshot, ProcessSharedRing};
 pub use router::{AudioRouter, RegisteredAudioSite};
 #[cfg(feature = "rtp-midi")]
 pub use rtp_midi::{RtpMidiBackend, RtpMidiPort, rtp_midi_backend_symbol};
-pub use site::{AudioSite, ModeledAudioSite};
+pub use site::{AudioSite, DeviceSite, DeviceSiteLocality, ModeledAudioSite};
 
 #[cfg(test)]
 mod catalog_tests;
 #[cfg(test)]
 mod config_probe_tests;
+#[cfg(test)]
+mod device_tests;
 #[cfg(test)]
 mod placement_tests;
 #[cfg(test)]

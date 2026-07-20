@@ -10,7 +10,7 @@ use sim_kernel::{
 use sim_lib_midi_live::{LiveMidiDirection, LiveMidiSession};
 
 use crate::{
-    DeviceCatalog, DeviceDirection, DeviceKind, DeviceProvider, DeviceRecord, Placement,
+    CatalogDeviceProvider, DeviceCatalog, DeviceDirection, DeviceKind, DeviceRecord, Placement,
     StreamEvalSite, audio_site_export_symbol, stream_host_capability,
 };
 
@@ -165,7 +165,7 @@ struct FixtureLiveMidiProvider {
     live_opens: Arc<AtomicUsize>,
 }
 
-impl DeviceProvider for FixtureLiveMidiProvider {
+impl CatalogDeviceProvider for FixtureLiveMidiProvider {
     fn enumerate(&self) -> sim_kernel::Result<Vec<DeviceRecord>> {
         Ok(vec![fixture_live_midi_record()])
     }
@@ -298,7 +298,7 @@ impl FixtureHardwareMidiProvider {
 }
 
 #[cfg(any(feature = "rtmidi-hardware", feature = "ble-midi-hardware"))]
-impl DeviceProvider for FixtureHardwareMidiProvider {
+impl CatalogDeviceProvider for FixtureHardwareMidiProvider {
     fn enumerate(&self) -> sim_kernel::Result<Vec<DeviceRecord>> {
         Ok(vec![DeviceRecord {
             id: Symbol::new(self.id),
