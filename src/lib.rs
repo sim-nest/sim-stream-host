@@ -32,10 +32,11 @@ mod router;
 #[cfg(feature = "rtp-midi")]
 mod rtp_midi;
 mod site;
+mod store_evict;
 
 pub use audio_provider::ModeledAudioProvider;
 pub use backend::{HostBackend, HostOpenStream, HostStreamDriver};
-pub use capability::{HostBackendCapability, missing_capability_card_expr};
+pub use capability::{DeviceCapability, HostBackendCapability, missing_capability_card_expr};
 pub use cassette::{HostCallbackCassette, HostCallbackReplayReport};
 pub use catalog::{DeviceCatalog, audio_device_export_symbol, audio_site_export_symbol};
 pub use config::{
@@ -79,6 +80,10 @@ pub use router::{AudioRouter, RegisteredAudioSite};
 #[cfg(feature = "rtp-midi")]
 pub use rtp_midi::{RtpMidiBackend, RtpMidiPort, rtp_midi_backend_symbol};
 pub use site::{AudioSite, DeviceSite, DeviceSiteLocality, ModeledAudioSite};
+pub use store_evict::{
+    BoundedContentStore, ContentFrame, RetentionWindow, StoreEvicted, StoreKey, retention_reason,
+    size_bound_reason,
+};
 
 #[cfg(test)]
 mod catalog_tests;
