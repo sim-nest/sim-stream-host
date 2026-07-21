@@ -37,6 +37,11 @@
     {
       "features": [],
       "group": "workspace",
+      "package": "sim-viture-ffi"
+    },
+    {
+      "features": [],
+      "group": "workspace",
       "package": "xtask"
     }
   ]

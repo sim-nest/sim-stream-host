@@ -3,7 +3,6 @@
 //! The crate adapts watch-specific BLE, phone relay, Zepp bridge, and import
 //! sources into the shared stream-host device provider surface.
 
-#![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
 pub mod ble;

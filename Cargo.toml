@@ -12,6 +12,7 @@ homepage = "https://github.com/sim-nest/sim-stream-host"
 [workspace]
 resolver = "3"
 members = [
+  "crates/sim-viture-ffi",
   "crates/sim-lib-stream-wristbridge",
   "xtask",
 ]

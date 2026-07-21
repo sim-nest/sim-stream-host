@@ -1,6 +1,6 @@
 {
   "generator": "xtask crate-catalog v1",
-  "package_count": 3,
+  "package_count": 4,
   "packages": [
     {
       "description": "Host-device stream backend substrate for SIM streams.",
@@ -22,6 +22,18 @@
       "publish": "true",
       "readme": "crates/sim-lib-stream-wristbridge/README.md",
       "root": "crates/sim-lib-stream-wristbridge",
+      "target_kinds": [
+        "lib"
+      ]
+    },
+    {
+      "description": "Unsafe-isolated dynamic loader for VITURE glasses SDK entry points.",
+      "generated_readme": false,
+      "manifest": "crates/sim-viture-ffi/Cargo.toml",
+      "name": "sim-viture-ffi",
+      "publish": "true",
+      "readme": "crates/sim-viture-ffi/README.md",
+      "root": "crates/sim-viture-ffi",
       "target_kinds": [
         "lib"
       ]

@@ -16,6 +16,13 @@
       "summary": "Local watch provider routes for SIM worn streams."
     },
     {
+      "crate_name": "sim_viture_ffi",
+      "group": "workspace",
+      "manifest": "crates/sim-viture-ffi/Cargo.toml",
+      "package": "sim-viture-ffi",
+      "summary": "Unsafe-isolated dynamic loader for VITURE glasses SDK entry points."
+    },
+    {
       "crate_name": "xtask",
       "group": "workspace",
       "manifest": "xtask/Cargo.toml",
