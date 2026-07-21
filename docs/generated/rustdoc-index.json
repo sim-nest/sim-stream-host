@@ -2,6 +2,13 @@
   "generator": "xtask repo-contract v1",
   "packages": [
     {
+      "crate_name": "sim_lib_stream_halo",
+      "group": "workspace",
+      "manifest": "crates/sim-lib-stream-halo/Cargo.toml",
+      "package": "sim-lib-stream-halo",
+      "summary": "Local Halo glasses provider and byte-budgeted Lua glance renderer."
+    },
+    {
       "crate_name": "sim_lib_stream_host",
       "group": "workspace",
       "manifest": "Cargo.toml",

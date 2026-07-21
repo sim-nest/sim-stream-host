@@ -53,6 +53,7 @@ or device is present.
 | Crate | Role |
 | --- | --- |
 | `sim-lib-stream-host` | Host-device stream backend substrate: the `HostBackend` trait and opened-stream handle, host stream configuration and capability records, device/port inventory, a deterministic backend registry, the cloneable bounded callback queue and preallocated process-site ring buffer, callback cassette recording/replay, LAN peer placement policy, and the `FakeBackend` and feature-gated `RtpMidiBackend` implementations. |
+| `sim-lib-stream-halo` | Local Halo glasses provider for direct BLE, Web Bluetooth, and phone-relay routes, with shared XR inputs, consent-gated one-shot camera references, and byte-budgeted Lua cell diffs for `scene/glance` output. |
 | `sim-lib-stream-viture` | Local VITURE glasses provider that publishes XR pose samples through the shared stream-device session surface and accepts display or IMU-control commands while keeping normal validation hardware-free. |
 | `sim-lib-stream-wristbridge` | Local wrist bridge routes that adapt watch imports, BLE, phone relay, and Zepp companion data into the shared worn-device provider surface without enabling hardware lanes during CI. |
 | `sim-viture-ffi` | Unsafe-isolated VITURE SDK boundary that discovers a local dynamic SDK, wraps Carina pose and IMU/control entry points, and returns a hardware-free unsupported result when no SDK is loadable. |

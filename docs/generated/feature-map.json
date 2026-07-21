@@ -2,6 +2,11 @@
   "generator": "xtask repo-contract v1",
   "packages": [
     {
+      "features": [],
+      "group": "workspace",
+      "package": "sim-lib-stream-halo"
+    },
+    {
       "features": [
         {
           "edges": [],
