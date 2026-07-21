@@ -31,6 +31,7 @@ sim-kernel = { version = "0.1.4" }
 sim-lib-midi-core = { version = "0.1.0" }
 sim-lib-midi-live = { version = "0.1.0" }
 sim-lib-stream-core = { version = "0.1.0" }
+sim-lib-view-device = { version = "0.1.0" }
 sim-value = { version = "0.1.2" }
 
 [features]

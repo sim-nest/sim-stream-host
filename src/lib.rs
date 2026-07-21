@@ -19,6 +19,7 @@ pub mod cookbook;
 mod device;
 mod eval_site;
 mod fake;
+mod glasses;
 mod inventory;
 mod midi_live_eval_site;
 mod midi_provider;
@@ -54,6 +55,14 @@ pub use device::{
 };
 pub use eval_site::{DeviceProvider as CatalogDeviceProvider, StreamEvalSite};
 pub use fake::{FakeBackend, fake_backend_symbol};
+pub use glasses::{
+    CAP_GLASSES_CAMERA, CAP_GLASSES_HAND, CAP_GLASSES_MIC, CAP_GLASSES_POSE,
+    CAP_GLASSES_VENDOR_REPORT, CAP_GLASSES_WORLD_ANCHOR, GlassesCapability, glasses_camera_grant,
+    glasses_capability_for_sample, glasses_hand_grant, glasses_mic_grant, glasses_pose_grant,
+    glasses_retention_windows, glasses_vendor_report_grant, glasses_world_anchor_grant,
+    require_glasses_consent, require_glasses_sample_ingest, store_glasses_frame,
+    sweep_glasses_retention,
+};
 pub use inventory::{HostDeviceInventory, HostPortSpec};
 pub use midi_live_eval_site::MidiLiveEvalSite;
 pub use midi_provider::ModeledMidiProvider;
@@ -97,6 +106,8 @@ mod catalog_tests;
 mod config_probe_tests;
 #[cfg(test)]
 mod device_tests;
+#[cfg(test)]
+mod glasses_tests;
 #[cfg(test)]
 mod placement_tests;
 #[cfg(test)]

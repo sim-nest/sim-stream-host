@@ -3,10 +3,10 @@
   "generated_by": "cargo run -p xtask -- simdoc",
   "generation_timestamp": "2026-07-15T00:40:48+02:00",
   "generator": "xtask repo-contract v1",
-  "git_commit": "361c5b141d054b01996e936c06927086c9cf1496",
+  "git_commit": "236898779f5bfbadf5e8064d9491b4b8a3a2e736",
   "repo": "sim-stream-host",
   "schema": "sim.provenance.v1",
-  "source_commit": "361c5b141d054b01996e936c06927086c9cf1496",
+  "source_commit": "236898779f5bfbadf5e8064d9491b4b8a3a2e736",
   "source_remote": "https://github.com/sim-nest/sim-stream-host",
   "validation_commands": [
     "cargo fmt --all --check",
@@ -19,9 +19,9 @@
     "cargo run -p xtask -- validation-matrix --check --repo .",
     "cargo run -p xtask -- crate-catalog --check --repo ."
   ],
-  "workspace_hash": "e1a076d488f6b67f",
+  "workspace_hash": "f70d5c64279db61b",
   "workspace_hash_algorithm": "fnv1a64",
-  "workspace_hash_input_count": 60,
+  "workspace_hash_input_count": 62,
   "workspace_hash_inputs": [
     "Cargo.toml",
     "crates/sim-lib-stream-wristbridge/Cargo.toml",
@@ -53,6 +53,8 @@
     "src/device_tests.rs",
     "src/eval_site.rs",
     "src/fake.rs",
+    "src/glasses.rs",
+    "src/glasses_tests.rs",
     "src/inventory.rs",
     "src/lib.rs",
     "src/midi_live_eval_site.rs",
