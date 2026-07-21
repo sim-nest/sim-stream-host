@@ -1,7 +1,6 @@
 # sim-lib-stream-wristbridge
 
-In one line: A local wrist bridge turns watch exports and nearby link routes into
-SIM worn events without needing a cloud account.
+In one line: A local wrist bridge turns watch exports into SIM worn events without cloud accounts.
 
 ## What it gives you
 
