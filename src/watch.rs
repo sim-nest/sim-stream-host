@@ -1,6 +1,7 @@
 //! Provider-side watch consent gates for worn stream expressions.
 
 use sim_kernel::{CapabilityName, Cx, Error, Expr, Result, Symbol};
+use sim_value::access::field;
 
 /// Capability required for watch health and biometric streams.
 pub const CAP_WATCH_HEALTH: &str = "watch/health";
@@ -171,16 +172,4 @@ fn required_symbol_field(expr: &Expr, name: &str) -> Result<Symbol> {
         }),
         None => Err(Error::Eval(format!("missing field {name}"))),
     }
-}
-
-fn field<'a>(expr: &'a Expr, name: &str) -> Option<&'a Expr> {
-    let Expr::Map(entries) = expr else {
-        return None;
-    };
-    entries.iter().find_map(|(key, value)| match key {
-        Expr::Symbol(symbol) if symbol.namespace.is_none() && symbol.name.as_ref() == name => {
-            Some(value)
-        }
-        _ => None,
-    })
 }
