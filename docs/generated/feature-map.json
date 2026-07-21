@@ -32,6 +32,11 @@
     {
       "features": [],
       "group": "workspace",
+      "package": "sim-lib-stream-viture"
+    },
+    {
+      "features": [],
+      "group": "workspace",
       "package": "sim-lib-stream-wristbridge"
     },
     {
