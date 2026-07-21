@@ -32,6 +32,11 @@
     {
       "features": [],
       "group": "workspace",
+      "package": "sim-lib-stream-wristbridge"
+    },
+    {
+      "features": [],
+      "group": "workspace",
       "package": "xtask"
     }
   ]

@@ -1,0 +1,24 @@
+//! Local watch provider routes for SIM worn streams.
+//!
+//! The crate adapts watch-specific BLE, phone relay, Zepp bridge, and import
+//! sources into the shared stream-host device provider surface.
+
+#![forbid(unsafe_code)]
+#![deny(missing_docs)]
+
+pub mod ble;
+mod command;
+mod event;
+pub mod import;
+pub mod relay;
+mod session;
+pub mod stub;
+#[cfg(test)]
+mod tests;
+pub mod zepp;
+
+pub use command::{WatchCommandKind, WatchCommandPacket, encode_watch_command};
+pub use event::{WORN_EVENT_SAMPLE_KIND, WornEvent, worn_event_sample_kind};
+pub use import::{ImportFormat, ImportSource};
+pub use session::{WatchProvider, WatchRoute, WatchRouteKind, WatchSession, watch_device_profile};
+pub use stub::watch_stub_provider;

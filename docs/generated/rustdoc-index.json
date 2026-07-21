@@ -9,6 +9,13 @@
       "summary": "Host-device stream backend substrate."
     },
     {
+      "crate_name": "sim_lib_stream_wristbridge",
+      "group": "workspace",
+      "manifest": "crates/sim-lib-stream-wristbridge/Cargo.toml",
+      "package": "sim-lib-stream-wristbridge",
+      "summary": "Local watch provider routes for SIM worn streams."
+    },
+    {
       "crate_name": "xtask",
       "group": "workspace",
       "manifest": "xtask/Cargo.toml",
