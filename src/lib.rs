@@ -33,6 +33,7 @@ mod router;
 mod rtp_midi;
 mod site;
 mod store_evict;
+mod watch;
 
 pub use audio_provider::ModeledAudioProvider;
 pub use backend::{HostBackend, HostOpenStream, HostStreamDriver};
@@ -84,6 +85,11 @@ pub use store_evict::{
     BoundedContentStore, ContentFrame, RetentionWindow, StoreEvicted, StoreKey, retention_reason,
     size_bound_reason,
 };
+pub use watch::{
+    CAP_WATCH_HEALTH, CAP_WATCH_LOCATION, CAP_WATCH_MIC, CAP_WATCH_VENDOR_REPORT, WatchCapability,
+    require_watch_consent, require_watch_worn_ingest, watch_capability_for_worn_event,
+    watch_health_grant, watch_location_grant, watch_mic_grant, watch_vendor_report_grant,
+};
 
 #[cfg(test)]
 mod catalog_tests;
@@ -99,3 +105,5 @@ mod provider_tests;
 mod ring_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod watch_tests;
