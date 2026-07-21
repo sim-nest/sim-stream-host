@@ -25,6 +25,7 @@ pub const CAP_GLASSES_MIC: &str = "glasses/mic";
 pub const CAP_GLASSES_VENDOR_REPORT: &str = "glasses/vendor-report";
 
 const XR_NAMESPACE: &str = "xr";
+const DEVICE_SAMPLE_NAMESPACE: &str = "stream/device-sample";
 const GLASSES_NAMESPACE: &str = "glasses";
 
 /// Glasses-sensitive provider capability classes.
@@ -140,6 +141,10 @@ pub fn glasses_capability_for_sample(sample: &Expr) -> Result<GlassesCapability>
         (Some(XR_NAMESPACE), "camera-frame") => Ok(GlassesCapability::Camera),
         (Some(XR_NAMESPACE), "hand") => Ok(GlassesCapability::Hand),
         (Some(XR_NAMESPACE), "mic-chunk") => Ok(GlassesCapability::Mic),
+        (Some(DEVICE_SAMPLE_NAMESPACE), "xr/pose") => Ok(GlassesCapability::Pose),
+        (Some(DEVICE_SAMPLE_NAMESPACE), "xr/camera-frame") => Ok(GlassesCapability::Camera),
+        (Some(DEVICE_SAMPLE_NAMESPACE), "xr/hand") => Ok(GlassesCapability::Hand),
+        (Some(DEVICE_SAMPLE_NAMESPACE), "xr/mic-chunk") => Ok(GlassesCapability::Mic),
         (Some(GLASSES_NAMESPACE), "world-anchor") => Ok(GlassesCapability::WorldAnchor),
         (Some(GLASSES_NAMESPACE), "vendor-report") => Ok(GlassesCapability::VendorReport),
         _ => Err(Error::HostError(format!(

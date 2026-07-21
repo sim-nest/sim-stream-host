@@ -7,12 +7,19 @@ use sim_lib_stream_device::DeviceSample as XrDeviceSample;
 use sim_lib_stream_host::{
     DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSession,
 };
-use sim_lib_stream_xr::{XrPoseSample, XrTrackingStatus, xr_pose_sample_kind_symbol};
+use sim_lib_stream_xr::{
+    XrCameraFrameRef, XrPoseSample, XrTrackingStatus, xr_camera_frame_sample_kind_symbol,
+    xr_pose_sample_kind_symbol,
+};
 use sim_viture_ffi::{
     LegacyImuRate, VitureError, VitureHandle, VitureLib, VitureSdkDiscovery, unsupported_viture_lib,
 };
 
-use crate::device_control::{VitureControlPacket, encode_viture_command};
+use crate::{
+    camera::VITURE_CAMERA_SAMPLE_KIND,
+    device_control::{VitureControlPacket, encode_viture_command},
+    vio::viture_tracking_status,
+};
 
 /// Bare XR pose sample kind emitted by VITURE sessions.
 pub const VITURE_POSE_SAMPLE_KIND: &str = "xr/pose";
@@ -72,6 +79,8 @@ pub enum VitureRoute {
     Scripted {
         /// Samples returned from `poll` in order.
         samples: Vec<XrPoseSample>,
+        /// Camera frame references returned from `poll` in order.
+        camera_frames: Vec<XrCameraFrameRef>,
     },
     /// Hardware-free unsupported route.
     Stub,
@@ -126,7 +135,18 @@ impl VitureProvider {
 
     /// Builds a deterministic hardware-free provider from pose samples.
     pub fn scripted(samples: Vec<XrPoseSample>) -> Self {
-        Self::new(VitureRoute::Scripted { samples })
+        Self::scripted_with_camera_frames(samples, Vec::new())
+    }
+
+    /// Builds a deterministic hardware-free provider from pose and camera samples.
+    pub fn scripted_with_camera_frames(
+        samples: Vec<XrPoseSample>,
+        camera_frames: Vec<XrCameraFrameRef>,
+    ) -> Self {
+        Self::new(VitureRoute::Scripted {
+            samples,
+            camera_frames,
+        })
     }
 
     /// Builds an unsupported provider for hardware-free defaults.
@@ -170,8 +190,12 @@ impl VitureProvider {
                     self.profile.clone(),
                 )?)
             }
-            VitureRoute::Scripted { samples } => Ok(VitureSession::scripted(
+            VitureRoute::Scripted {
+                samples,
+                camera_frames,
+            } => Ok(VitureSession::scripted(
                 samples.clone(),
+                camera_frames.clone(),
                 self.profile.clone(),
             )),
         }
@@ -215,6 +239,7 @@ enum VitureSessionRoute {
     },
     Scripted {
         samples: VecDeque<XrPoseSample>,
+        camera_frames: VecDeque<XrCameraFrameRef>,
     },
 }
 
@@ -259,11 +284,16 @@ impl VitureSession {
         })
     }
 
-    fn scripted(samples: Vec<XrPoseSample>, profile: DeviceProfile) -> Self {
+    fn scripted(
+        samples: Vec<XrPoseSample>,
+        camera_frames: Vec<XrCameraFrameRef>,
+        profile: DeviceProfile,
+    ) -> Self {
         Self {
             profile,
             route: VitureSessionRoute::Scripted {
                 samples: samples.into(),
+                camera_frames: camera_frames.into(),
             },
             sent: Vec::new(),
             started: false,
@@ -312,10 +342,15 @@ impl DeviceSession for VitureSession {
     }
 
     fn poll(&mut self, kind: &str) -> DeviceResult<Option<Expr>> {
-        if kind != VITURE_POSE_SAMPLE_KIND {
+        if kind != VITURE_POSE_SAMPLE_KIND && kind != VITURE_CAMERA_SAMPLE_KIND {
             return Ok(None);
         }
         match &mut self.route {
+            VitureSessionRoute::Carina { .. } | VitureSessionRoute::LegacyImu { .. }
+                if kind == VITURE_CAMERA_SAMPLE_KIND =>
+            {
+                Ok(None)
+            }
             VitureSessionRoute::Carina {
                 lib,
                 handle,
@@ -325,7 +360,12 @@ impl DeviceSession for VitureSession {
                 let pose = lib
                     .carina_pose(handle, *predict_ns)
                     .map_err(map_viture_error)?;
-                let sample = carina_pose_sample(*seq, *predict_ns, pose.pose)?;
+                let sample = carina_pose_sample(
+                    *seq,
+                    *predict_ns,
+                    pose.pose,
+                    viture_tracking_status(pose.status),
+                )?;
                 *seq = seq.saturating_add(1);
                 Ok(Some(sample.to_expr()))
             }
@@ -345,7 +385,13 @@ impl DeviceSession for VitureSession {
                 *seq = seq.saturating_add(1);
                 Ok(Some(sample.to_expr()))
             }
-            VitureSessionRoute::Scripted { samples } => {
+            VitureSessionRoute::Scripted {
+                samples,
+                camera_frames,
+            } => {
+                if kind == VITURE_CAMERA_SAMPLE_KIND {
+                    return Ok(camera_frames.pop_front().map(|sample| sample.to_expr()));
+                }
                 Ok(samples.pop_front().map(|sample| sample.to_expr()))
             }
         }
@@ -380,18 +426,23 @@ pub fn viture_device_profile() -> DeviceProfile {
         vec![
             Symbol::qualified("device/stream", "xr-pose"),
             Symbol::qualified("device/stream", "xr-imu"),
+            Symbol::qualified("device/stream", "xr-camera"),
             Symbol::qualified("device/stream", "display-control"),
         ],
         vec![
             Symbol::qualified("device/input", "head-pose"),
             Symbol::qualified("device/input", "imu"),
+            Symbol::qualified("device/input", "camera"),
         ],
         vec![
             Symbol::qualified("glasses/output", "display-3d"),
             Symbol::qualified("glasses/output", "brightness"),
             Symbol::qualified("glasses/output", "privacy-film"),
         ],
-        vec![xr_pose_sample_kind_symbol()],
+        vec![
+            xr_pose_sample_kind_symbol(),
+            xr_camera_frame_sample_kind_symbol(),
+        ],
     )
 }
 
@@ -434,7 +485,12 @@ fn route_lib(route: &VitureSessionRoute) -> DeviceResult<&VitureLib> {
     }
 }
 
-fn carina_pose_sample(seq: u64, predict_ns: u64, pose: [f64; 7]) -> DeviceResult<XrPoseSample> {
+fn carina_pose_sample(
+    seq: u64,
+    predict_ns: u64,
+    pose: [f64; 7],
+    status: XrTrackingStatus,
+) -> DeviceResult<XrPoseSample> {
     XrPoseSample::new(
         seq,
         Some([pose[0], pose[1], pose[2]]),
@@ -442,7 +498,7 @@ fn carina_pose_sample(seq: u64, predict_ns: u64, pose: [f64; 7]) -> DeviceResult
         sample_time_ns(seq),
         predict_ns,
         6,
-        XrTrackingStatus::Tracked,
+        status,
     )
     .map_err(map_sample_error)
 }

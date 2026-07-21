@@ -25,6 +25,10 @@ fn glasses_provider_gate_requires_capability_visible_grant_and_session() {
         assert_eq!(glasses_capability_for_sample(sample).unwrap(), *capability);
     }
     assert_eq!(
+        glasses_capability_for_sample(&xr_device_sample("camera-frame")).unwrap(),
+        GlassesCapability::Camera
+    );
+    assert_eq!(
         GlassesCapability::from_name("glasses/vendor-report"),
         Some(GlassesCapability::VendorReport)
     );
@@ -149,6 +153,19 @@ fn xr_sample(kind: &str) -> Expr {
     build::map(vec![
         ("kind", build::qsym("stream/device-sample", "record")),
         ("sample", build::qsym("xr", kind)),
+    ])
+}
+
+fn xr_device_sample(kind: &str) -> Expr {
+    build::map(vec![
+        ("kind", build::qsym("stream/device-sample", "record")),
+        (
+            "sample",
+            Expr::Symbol(Symbol::qualified(
+                "stream/device-sample",
+                format!("xr/{kind}"),
+            )),
+        ),
     ])
 }
 

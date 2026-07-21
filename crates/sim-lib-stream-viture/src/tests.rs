@@ -1,13 +1,18 @@
-use sim_kernel::Expr;
+use std::sync::Arc;
+
+use sim_kernel::{CapabilitySet, Cx, DefaultFactory, EagerPolicy, Error, Expr, Symbol};
 use sim_lib_stream_device::DeviceSample as XrDeviceSample;
 use sim_lib_stream_host::{DeviceError, DeviceProvider, DeviceSession};
-use sim_lib_stream_xr::{XrPoseSample, XrTrackingStatus};
+use sim_lib_stream_xr::{XrCameraFrameRef, XrPoseSample, XrTrackingStatus};
+use sim_lib_view_device::{ConsentReceipt, EdgeId};
 use sim_value::build;
-use sim_viture_ffi::{LegacyImuRate, unsupported_viture_lib};
+use sim_viture_ffi::{LegacyImuRate, VitureStatus, unsupported_viture_lib};
 
 use crate::{
-    VITURE_POSE_SAMPLE_KIND, VitureCommandKind, VitureControlPacket, VitureProvider,
-    encode_viture_command, viture_command_symbol, viture_device_profile,
+    VITURE_CAMERA_SAMPLE_KIND, VITURE_POSE_SAMPLE_KIND, VitureCameraFrame, VitureCameraKind,
+    VitureCommandKind, VitureControlPacket, VitureProvider, encode_viture_command,
+    store_viture_camera_frame, viture_camera_sample_kind_symbol, viture_camera_store_key,
+    viture_command_symbol, viture_device_profile, viture_tracking_status,
 };
 
 #[test]
@@ -49,6 +54,106 @@ fn scripted_pose_session_emits_monotone_xr_pose() {
     assert_eq!(first.seq(), 10);
     assert_eq!(second.seq(), 11);
     assert!(first.seq() < second.seq());
+}
+
+#[test]
+fn scripted_camera_session_emits_frame_refs() {
+    let frame = camera_ref(3);
+    let provider = VitureProvider::scripted_with_camera_frames(Vec::new(), vec![frame.clone()]);
+    let mut session = provider.open_session().unwrap();
+
+    assert!(
+        session
+            .profile()
+            .supports_sample_kind(&viture_camera_sample_kind_symbol())
+    );
+    session.start().unwrap();
+
+    let emitted = session.poll(VITURE_CAMERA_SAMPLE_KIND).unwrap().unwrap();
+    assert!(session.poll(VITURE_CAMERA_SAMPLE_KIND).unwrap().is_none());
+    assert_eq!(XrCameraFrameRef::from_expr(&emitted).unwrap(), frame);
+}
+
+#[test]
+fn camera_frame_store_is_consent_gated_and_by_reference() {
+    let session = EdgeId::named("viture-camera");
+    let other_session = EdgeId::named("other");
+    let receipt = ConsentReceipt::new(
+        vec![sim_lib_stream_host::glasses_camera_grant()],
+        1_000,
+        Vec::new(),
+        session.clone(),
+        9,
+    );
+    let frame = camera_frame(7, 8);
+    let mut store = sim_lib_stream_host::BoundedContentStore::new(64).unwrap();
+    let cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+
+    assert!(matches!(
+        store_viture_camera_frame(&cx, &mut store, &receipt, &session, frame.clone(), 0),
+        Err(Error::CapabilityDenied { .. })
+    ));
+
+    let granted = CapabilitySet::new()
+        .grant(sim_lib_stream_host::GlassesCapability::Camera.capability_name());
+    let mut cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    cx.with_capabilities(granted, |cx| {
+        assert!(matches!(
+            store_viture_camera_frame(cx, &mut store, &receipt, &other_session, frame.clone(), 0),
+            Err(Error::HostError(message)) if message.contains("not for this session")
+        ));
+        let (sample, evicted) =
+            store_viture_camera_frame(cx, &mut store, &receipt, &session, frame.clone(), 0)?;
+        assert!(evicted.is_empty());
+        assert_eq!(sample.frame_key(), &frame.frame_key);
+        assert!(store.contains(&viture_camera_store_key(frame.frame_key.clone())));
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn camera_frame_reaper_evicts_expired_ref() {
+    let session = EdgeId::named("viture-camera");
+    let receipt = ConsentReceipt::new(
+        vec![sim_lib_stream_host::glasses_camera_grant()],
+        1_000,
+        Vec::new(),
+        session.clone(),
+        11,
+    );
+    let frame = camera_frame(12, 6);
+    let key = viture_camera_store_key(frame.frame_key.clone());
+    let mut store = sim_lib_stream_host::BoundedContentStore::new(64).unwrap();
+    let granted = CapabilitySet::new()
+        .grant(sim_lib_stream_host::GlassesCapability::Camera.capability_name());
+    let mut cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+
+    cx.with_capabilities(granted, |cx| {
+        store_viture_camera_frame(cx, &mut store, &receipt, &session, frame, 0)?;
+        Ok(())
+    })
+    .unwrap();
+    assert!(store.contains(&key));
+
+    let early = sim_lib_stream_host::sweep_glasses_retention(
+        &mut store,
+        std::slice::from_ref(&receipt),
+        0,
+        1,
+    );
+    assert!(early.is_empty());
+    let evicted = sim_lib_stream_host::sweep_glasses_retention(&mut store, &[receipt], 2, 1);
+    assert!(evicted.iter().any(|item| item.key == key));
+    assert!(store.is_empty());
+}
+
+#[test]
+fn viture_pose_status_maps_to_xr_tracking_status() {
+    assert_eq!(
+        viture_tracking_status(VitureStatus::from_code(0).unwrap()),
+        XrTrackingStatus::Tracked
+    );
 }
 
 #[test]
@@ -123,10 +228,37 @@ fn viture_profile_advertises_xr_pose_and_controls() {
         sim_kernel::Symbol::qualified("device", "viture-glasses")
     );
     assert!(profile.supports_sample_kind(&sim_lib_stream_xr::xr_pose_sample_kind_symbol()));
+    assert!(profile.supports_sample_kind(&viture_camera_sample_kind_symbol()));
     assert!(profile.outputs.contains(&sim_kernel::Symbol::qualified(
         "glasses/output",
         "privacy-film"
     )));
+}
+
+fn camera_ref(seq: u64) -> XrCameraFrameRef {
+    XrCameraFrameRef::new(
+        seq,
+        Symbol::qualified("device", "viture-glasses"),
+        Symbol::qualified("stream/xr-camera", "viture-stereo-vio"),
+        Symbol::qualified("stream/content", format!("viture-frame-{seq}")),
+        [1280, 720],
+        seq * 8_333_333,
+        true,
+    )
+    .unwrap()
+}
+
+fn camera_frame(seq: u64, size_bytes: usize) -> VitureCameraFrame {
+    VitureCameraFrame::new(
+        seq,
+        VitureCameraKind::UvcRgb,
+        Symbol::qualified("stream/content", format!("viture-uvc-{seq}")),
+        [640, 480],
+        seq * 8_333_333,
+        build::text(format!("camera bytes {seq}")),
+        size_bytes,
+    )
+    .unwrap()
 }
 
 fn pose_sample(seq: u64) -> XrPoseSample {
