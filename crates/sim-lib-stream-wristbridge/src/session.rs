@@ -9,6 +9,7 @@ use sim_lib_stream_host::{
 };
 
 use crate::ble::BlueZLink;
+use crate::bringup::{BringupLedger, RouteEnableGuard};
 use crate::command::{WatchCommandPacket, encode_watch_command};
 use crate::import::ImportSource;
 use crate::relay::RelayLink;
@@ -60,6 +61,7 @@ pub enum WatchRoute {
 pub struct WatchProvider {
     route: WatchRoute,
     profile: DeviceProfile,
+    bringup: BringupLedger,
 }
 
 impl WatchProvider {
@@ -68,7 +70,14 @@ impl WatchProvider {
         Self {
             route,
             profile: watch_device_profile(),
+            bringup: BringupLedger::default(),
         }
+    }
+
+    /// Builds a provider with an explicit hardware bring-up ledger.
+    pub fn with_bringup_ledger(mut self, bringup: BringupLedger) -> Self {
+        self.bringup = bringup;
+        self
     }
 
     /// Builds a provider for a standard BLE route.
@@ -101,8 +110,14 @@ impl WatchProvider {
         &self.profile
     }
 
+    /// Returns the hardware bring-up ledger used by this provider.
+    pub const fn bringup_ledger(&self) -> &BringupLedger {
+        &self.bringup
+    }
+
     /// Opens a concrete watch session without boxing.
     pub fn open_session(&self) -> DeviceResult<WatchSession> {
+        RouteEnableGuard::enable(&self.route, &self.bringup)?;
         match &self.route {
             WatchRoute::Stub => Err(DeviceError::Unsupported),
             WatchRoute::Ble(link) => Ok(WatchSession::new(

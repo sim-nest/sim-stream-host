@@ -1,0 +1,6 @@
+(bringup/ledger
+  :ble (:verified false :proof nil :requires "BlueZ HR/Battery/DeviceInfo/CurrentTime proof")
+  :relay (:verified false :proof nil :requires "phone relay notification lane proof")
+  :zepp (:verified false :proof nil :requires "Zepp Mini Program bridge proof")
+  :import (:verified true :proof "synthetic GPX/FIT/TCX/CSV fixtures exercised by CI")
+  :wifi-lan (:verified false :proof nil :requires "Zepp OS API and device policy Wi-Fi LAN proof"))

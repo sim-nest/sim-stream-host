@@ -7,6 +7,9 @@
 #![deny(missing_docs)]
 
 pub mod ble;
+pub mod bringup;
+#[cfg(test)]
+mod bringup_tests;
 mod command;
 mod event;
 pub mod import;
@@ -17,6 +20,10 @@ pub mod stub;
 mod tests;
 pub mod zepp;
 
+pub use bringup::{
+    BRINGUP_LEDGER_FIXTURE, BRINGUP_LEDGER_FIXTURE_NAME, BringupLedger, BringupRoute,
+    RouteEnableGuard, RouteProof,
+};
 pub use command::{WatchCommandKind, WatchCommandPacket, encode_watch_command};
 pub use event::{WORN_EVENT_SAMPLE_KIND, WornEvent, worn_event_sample_kind};
 pub use import::{ImportFormat, ImportSource};

@@ -3,6 +3,7 @@ use sim_lib_stream_host::{DeviceError, DeviceProvider, DeviceSample, DeviceSessi
 use sim_value::{access, build};
 
 use crate::ble::BlueZLink;
+use crate::bringup::{BringupLedger, BringupRoute};
 use crate::import::ImportSource;
 use crate::relay::RelayLink;
 use crate::zepp::ZeppBridgeLink;
@@ -74,14 +75,20 @@ fn watch_command_serializes_for_relay_and_mini_program_bridge() {
         "stream/wristbridge/zepp-bridge-command"
     );
 
-    let mut relay_session = WatchProvider::relay(relay).open_session().unwrap();
+    let mut relay_session = WatchProvider::relay(relay)
+        .with_bringup_ledger(verified(BRINGUP_TEST_PROOF, BringupRoute::Relay))
+        .open_session()
+        .unwrap();
     relay_session.send(&command).unwrap();
     assert_eq!(
         relay_session.sent_commands()[0].route(),
         WatchRouteKind::Relay
     );
 
-    let mut zepp_session = WatchProvider::zepp_bridge(zepp).open_session().unwrap();
+    let mut zepp_session = WatchProvider::zepp_bridge(zepp)
+        .with_bringup_ledger(verified(BRINGUP_TEST_PROOF, BringupRoute::Zepp))
+        .open_session()
+        .unwrap();
     zepp_session.send(&privacy_command()).unwrap();
     assert_eq!(
         zepp_session.sent_commands()[0].command(),
@@ -98,6 +105,7 @@ fn ble_and_import_sessions_accept_watch_commands() {
         "AA:BB:CC:DD:EE:FF",
         vec![event],
     ))
+    .with_bringup_ledger(verified(BRINGUP_TEST_PROOF, BringupRoute::Ble))
     .open_session()
     .unwrap();
 
@@ -168,6 +176,14 @@ fn privacy_command() -> Expr {
         ("enabled", Expr::Bool(true)),
         ("window-ms", build::uint(60_000)),
     ])
+}
+
+const BRINGUP_TEST_PROOF: &str = "human hardware bring-up proof";
+
+fn verified(proof: &str, route: BringupRoute) -> BringupLedger {
+    let mut ledger = BringupLedger::default();
+    ledger.verify(route, proof);
+    ledger
 }
 
 #[test]
