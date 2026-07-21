@@ -7,4 +7,5 @@ Generated from Cargo metadata by `xtask crate-catalog v1`.
 | Package | Publish | Targets | Description |
 | --- | --- | --- | --- |
 | `sim-lib-stream-host` | `true` | `lib` | Host-device stream backend substrate for SIM streams. |
+| `sim-lib-stream-wristbridge` | `true` | `lib` | Local watch provider routes for SIM worn streams. |
 | `xtask` | `false` | `bin` | SIM workspace package for xtask. |

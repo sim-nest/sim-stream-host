@@ -1,6 +1,6 @@
 {
   "generator": "xtask crate-catalog v1",
-  "package_count": 2,
+  "package_count": 3,
   "packages": [
     {
       "description": "Host-device stream backend substrate for SIM streams.",
@@ -10,6 +10,18 @@
       "publish": "true",
       "readme": "README.md",
       "root": ".",
+      "target_kinds": [
+        "lib"
+      ]
+    },
+    {
+      "description": "Local watch provider routes for SIM worn streams.",
+      "generated_readme": true,
+      "manifest": "crates/sim-lib-stream-wristbridge/Cargo.toml",
+      "name": "sim-lib-stream-wristbridge",
+      "publish": "true",
+      "readme": "crates/sim-lib-stream-wristbridge/README.md",
+      "root": "crates/sim-lib-stream-wristbridge",
       "target_kinds": [
         "lib"
       ]
