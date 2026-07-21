@@ -6,8 +6,8 @@ license.workspace = true
 description = "Local watch provider routes for SIM worn streams."
 readme = "BROCHURE.md"
 publish = true
-repository.workspace = true
-homepage.workspace = true
+repository = "https://github.com/sim-nest/sim-stream-host"
+homepage = "https://github.com/sim-nest/sim-stream-host"
 
 [dependencies]
 sim-kernel = { version = "0.1.4" }
