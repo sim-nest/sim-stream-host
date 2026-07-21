@@ -1,7 +1,6 @@
 # sim-lib-stream-viture
 
-In one line: A local VITURE glasses bridge turns headset pose and display controls
-into SIM device-stream records.
+In one line: A local VITURE glasses bridge turns headset pose and display controls into SIM device-stream records.
 
 ## What it gives you
 
