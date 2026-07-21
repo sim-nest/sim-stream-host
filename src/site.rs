@@ -104,6 +104,16 @@ impl DeviceSite {
         )
     }
 
+    /// Builds a host-local site descriptor.
+    pub fn host_local(symbol: Symbol, profile: DeviceProfile, surface_codec_id: Symbol) -> Self {
+        Self::new(
+            symbol,
+            profile,
+            surface_codec_id,
+            DeviceSiteLocality::HostLocal,
+        )
+    }
+
     /// Builds a remote site descriptor.
     pub fn remote(symbol: Symbol, profile: DeviceProfile, surface_codec_id: Symbol) -> Self {
         Self::new(

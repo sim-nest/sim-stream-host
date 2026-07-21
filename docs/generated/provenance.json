@@ -3,10 +3,10 @@
   "generated_by": "cargo run -p xtask -- simdoc",
   "generation_timestamp": "2026-07-15T00:40:48+02:00",
   "generator": "xtask repo-contract v1",
-  "git_commit": "c1fd43d3359908bf01d8a935242fc505c158699b",
+  "git_commit": "17bfb19eeeedffaa14fde65242425c9add774a82",
   "repo": "sim-stream-host",
   "schema": "sim.provenance.v1",
-  "source_commit": "c1fd43d3359908bf01d8a935242fc505c158699b",
+  "source_commit": "17bfb19eeeedffaa14fde65242425c9add774a82",
   "source_remote": "https://github.com/sim-nest/sim-stream-host",
   "validation_commands": [
     "cargo fmt --all --check",
@@ -19,9 +19,9 @@
     "cargo run -p xtask -- validation-matrix --check --repo .",
     "cargo run -p xtask -- crate-catalog --check --repo ."
   ],
-  "workspace_hash": "3cef07c3a77831bc",
+  "workspace_hash": "4758e68062397281",
   "workspace_hash_algorithm": "fnv1a64",
-  "workspace_hash_input_count": 87,
+  "workspace_hash_input_count": 89,
   "workspace_hash_inputs": [
     "Cargo.toml",
     "crates/sim-lib-stream-halo/Cargo.toml",
@@ -79,6 +79,8 @@
     "src/eval_site.rs",
     "src/fake.rs",
     "src/glasses.rs",
+    "src/glasses_placement.rs",
+    "src/glasses_placement_tests.rs",
     "src/glasses_tests.rs",
     "src/inventory.rs",
     "src/lib.rs",
