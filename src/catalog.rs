@@ -1,7 +1,7 @@
-//! Shared host-device catalog for modeled stream placements.
+//! Shared host-device catalog for stream placements.
 
 use sim_kernel::{
-    Error, Result, Symbol,
+    Cx, Error, Result, Symbol,
     library::{ExportKind, ExportRecord, ExportState, Registry},
 };
 
@@ -39,7 +39,7 @@ impl DeviceCatalog {
         catalog
     }
 
-    /// Builds a modeled catalog plus audio devices exported by loaded libs.
+    /// Builds a modeled catalog plus audio sites exported by loaded libs.
     pub fn with_registry_audio_devices(registry: &Registry) -> Self {
         let mut catalog = Self::default_modeled();
         catalog.register_registry_audio_devices(registry);
@@ -79,7 +79,7 @@ impl DeviceCatalog {
         }
     }
 
-    /// Adds audio-device records currently owned by loaded registry libs.
+    /// Adds audio-site records currently owned by loaded registry libs.
     pub fn register_registry_audio_devices(&mut self, registry: &Registry) {
         let provider = RegistryAudioDevices::from_registry(registry);
         if !provider.is_empty() {
@@ -96,7 +96,23 @@ impl DeviceCatalog {
         Ok(records)
     }
 
-    /// Opens a cataloged stream evaluation site by device id.
+    /// Opens a cataloged stream evaluation site by device id after checking
+    /// authority and recording the declared device effects.
+    pub fn open_checked(&self, cx: &mut Cx, id: &Symbol) -> Result<Box<dyn StreamEvalSite>> {
+        for record in self.enumerate()? {
+            if &record.id == id {
+                record.open_plan().enforce(cx)?;
+                return self.open(id);
+            }
+        }
+        Err(Error::Eval(format!("DeviceCatalog: no device '{id}'")))
+    }
+
+    /// Opens a cataloged stream evaluation site by device id through the
+    /// provider-level compatibility dispatch path.
+    ///
+    /// Runtime and public host opens should use [`Self::open_checked`] so the
+    /// catalog row's authority and device effects are handled first.
     pub fn open(&self, id: &Symbol) -> Result<Box<dyn StreamEvalSite>> {
         for provider in &self.providers {
             let records = provider.enumerate()?;
@@ -107,7 +123,17 @@ impl DeviceCatalog {
         Err(Error::Eval(format!("DeviceCatalog: no device '{id}'")))
     }
 
-    /// Opens a cataloged MIDI device as a live MIDI evaluation site.
+    /// Opens a cataloged MIDI device as a live MIDI evaluation site after
+    /// checking authority and recording the declared device effects.
+    pub fn open_live_checked(&self, cx: &mut Cx, id: &Symbol) -> Result<MidiLiveEvalSite> {
+        MidiLiveEvalSite::from_eval_site(id, self.open_checked(cx, id)?)
+    }
+
+    /// Opens a cataloged MIDI device as a live MIDI evaluation site through the
+    /// compatibility dispatch path.
+    ///
+    /// Runtime and public host opens should use [`Self::open_live_checked`] so
+    /// the catalog row's authority and device effects are handled first.
     pub fn open_live(&self, id: &Symbol) -> Result<MidiLiveEvalSite> {
         MidiLiveEvalSite::from_eval_site(id, self.open(id)?)
     }
@@ -122,6 +148,32 @@ impl DeviceCatalog {
         self.enumerate_kind(DeviceKind::Audio)
     }
 
+    /// Returns safe audio backend candidate names from catalog records.
+    ///
+    /// Hardware records contribute their transport name. Modeled records keep
+    /// the deterministic `modeled` fallback as the final candidate.
+    pub fn audio_backend_names(&self) -> Result<Vec<String>> {
+        self.backend_names(DeviceKind::Audio, true)
+    }
+
+    /// Returns safe MIDI backend candidate names from catalog records.
+    ///
+    /// Hardware records contribute their transport name. Modeled records keep
+    /// the deterministic `modeled` fallback as the final candidate.
+    pub fn midi_backend_names(&self) -> Result<Vec<String>> {
+        self.backend_names(DeviceKind::Midi, true)
+    }
+
+    /// Returns audio backend candidate names for real hardware only.
+    pub fn audio_hardware_backend_names(&self) -> Result<Vec<String>> {
+        self.backend_names(DeviceKind::Audio, false)
+    }
+
+    /// Returns MIDI backend candidate names for real hardware only.
+    pub fn midi_hardware_backend_names(&self) -> Result<Vec<String>> {
+        self.backend_names(DeviceKind::Midi, false)
+    }
+
     fn enumerate_kind(&self, kind: DeviceKind) -> Result<Vec<DeviceRecord>> {
         Ok(self
             .enumerate()?
@@ -129,9 +181,46 @@ impl DeviceCatalog {
             .filter(|record| record.kind == kind)
             .collect())
     }
+
+    fn backend_names(
+        &self,
+        kind: DeviceKind,
+        include_modeled_fallback: bool,
+    ) -> Result<Vec<String>> {
+        let mut names = Vec::new();
+        let mut has_modeled = false;
+        for record in self
+            .enumerate()?
+            .into_iter()
+            .filter(|record| record.kind == kind)
+        {
+            match record.placement {
+                Placement::Modeled => has_modeled = true,
+                Placement::Hardware { transport } => push_unique(&mut names, transport.name),
+            }
+        }
+        if include_modeled_fallback && (has_modeled || names.is_empty()) {
+            push_unique(&mut names, "modeled");
+        }
+        Ok(names)
+    }
+}
+
+fn push_unique(names: &mut Vec<String>, name: impl ToString) {
+    let name = name.to_string();
+    if !names.iter().any(|existing| existing == &name) {
+        names.push(name);
+    }
+}
+
+/// Stable site export symbol for an audio site owned by a loaded lib.
+pub fn audio_site_export_symbol(name: &str) -> Symbol {
+    Symbol::qualified("audio/site", name)
 }
 
 /// Stable export symbol for an audio device owned by a loaded lib.
+///
+/// Prefer [`audio_site_export_symbol`] for placement-capable audio sites.
 pub fn audio_device_export_symbol(name: &str) -> Symbol {
     Symbol::qualified("audio/device", name)
 }
@@ -143,9 +232,18 @@ struct ProviderAudioSites {
 impl ProviderAudioSites {
     fn from_router(router: &AudioRouter) -> Self {
         let mut records = router
-            .site_keys()
-            .filter_map(|key| router.site(key))
-            .map(|site| DeviceRecord::modeled_audio_from_card(site.card()))
+            .registered_sites()
+            .map(|registered| {
+                let card = registered.site.card();
+                let placement = if card.hardware_required {
+                    Placement::Hardware {
+                        transport: registered.owner.clone(),
+                    }
+                } else {
+                    Placement::Modeled
+                };
+                DeviceRecord::audio_from_card(card, placement)
+            })
             .collect::<Vec<_>>();
         records.sort_by_key(|record| record.id.to_string());
         Self { records }
@@ -182,7 +280,7 @@ impl RegistryAudioDevices {
             .libs()
             .iter()
             .flat_map(|lib| lib.exports.iter())
-            .filter_map(registry_audio_device_record)
+            .filter_map(registry_audio_site_record)
             .collect::<Vec<_>>();
         records.sort_by_key(|record| record.id.to_string());
         records.dedup_by(|left, right| left.id == right.id);
@@ -210,11 +308,11 @@ impl DeviceProvider for RegistryAudioDevices {
     }
 }
 
-fn registry_audio_device_record(record: &ExportRecord) -> Option<DeviceRecord> {
-    if record.kind != ExportKind::named(ExportKind::VALUE) {
+fn registry_audio_site_record(record: &ExportRecord) -> Option<DeviceRecord> {
+    if record.kind != ExportKind::named(ExportKind::SITE) {
         return None;
     }
-    if record.symbol.namespace.as_deref() != Some("audio/device") {
+    if record.symbol.namespace.as_deref() != Some("audio/site") {
         return None;
     }
     if matches!(record.state, ExportState::Invalid { .. }) {
@@ -222,10 +320,12 @@ fn registry_audio_device_record(record: &ExportRecord) -> Option<DeviceRecord> {
     }
     Some(DeviceRecord {
         id: record.symbol.clone(),
-        display_name: format!("{} audio device", record.symbol.name),
+        display_name: format!("{} audio site", record.symbol.name),
         kind: DeviceKind::Audio,
         direction: DeviceDirection::Duplex,
-        placement: Placement::Modeled,
+        placement: Placement::Hardware {
+            transport: record.symbol.clone(),
+        },
     })
 }
 

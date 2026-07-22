@@ -1,6 +1,7 @@
 //! Shared stream evaluation-site traits for cataloged host devices.
 
 use sim_kernel::{Result, Symbol};
+use sim_lib_midi_live::LiveMidiSession;
 
 use crate::placement::{DeviceRecord, Placement};
 
@@ -12,6 +13,12 @@ pub trait StreamEvalSite: Send {
     /// Returns the catalog row that opened this site.
     fn device_record(&self) -> &DeviceRecord;
 
+    /// Returns a provider-owned live MIDI session for this site, when opening
+    /// the site also opened a real MIDI transport.
+    fn live_midi_session(&self) -> Option<Result<LiveMidiSession>> {
+        None
+    }
+
     /// Closes the site.
     fn close(self: Box<Self>) -> Result<()>;
 }
@@ -22,5 +29,9 @@ pub trait DeviceProvider: Send + Sync {
     fn enumerate(&self) -> Result<Vec<DeviceRecord>>;
 
     /// Opens one provider-owned device by catalog id.
+    ///
+    /// This is provider-level dispatch for an already checked catalog row.
+    /// Public catalog opens should use
+    /// [`DeviceCatalog::open_checked`](crate::DeviceCatalog::open_checked).
     fn open(&self, id: &Symbol) -> Result<Box<dyn StreamEvalSite>>;
 }

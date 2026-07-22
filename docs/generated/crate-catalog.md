@@ -6,5 +6,9 @@ Generated from Cargo metadata by `xtask crate-catalog v1`.
 
 | Package | Publish | Targets | Description |
 | --- | --- | --- | --- |
-| `sim-lib-stream-host` | `true` | `lib` | Host-device stream backend substrate for STREAM 6. |
+| `sim-lib-stream-host` | `true` | `lib` | Host-device stream backend substrate for SIM streams. |
+| `sim-lib-stream-halo` | `true` | `lib` | Local Halo glasses provider and byte-budgeted Lua glance renderer. |
+| `sim-lib-stream-viture` | `true` | `lib` | Local VITURE glasses provider for SIM XR stream samples. |
+| `sim-lib-stream-wristbridge` | `true` | `lib` | Local watch provider routes for SIM worn streams. |
+| `sim-viture-ffi` | `true` | `lib` | Unsafe-isolated dynamic loader for VITURE glasses SDK entry points. |
 | `xtask` | `false` | `bin` | SIM workspace package for xtask. |

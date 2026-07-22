@@ -12,4 +12,4 @@ SIM workspace package for xtask.
 
 ## Crate Documentation
 
-SIM workspace package for xtask.
+Repository maintenance tasks for sim-stream-host.

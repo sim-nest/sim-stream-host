@@ -53,6 +53,10 @@ or device is present.
 | Crate | Role |
 | --- | --- |
 | `sim-lib-stream-host` | Host-device stream backend substrate: the `HostBackend` trait and opened-stream handle, host stream configuration and capability records, device/port inventory, a deterministic backend registry, the cloneable bounded callback queue and preallocated process-site ring buffer, callback cassette recording/replay, LAN peer placement policy, and the `FakeBackend` and feature-gated `RtpMidiBackend` implementations. |
+| `sim-lib-stream-halo` | Local Halo glasses provider for direct BLE, Web Bluetooth, and phone-relay routes, with shared XR inputs, consent-gated one-shot camera references, and byte-budgeted Lua cell diffs for `scene/glance` output. |
+| `sim-lib-stream-viture` | Local VITURE glasses provider that publishes XR pose samples through the shared stream-device session surface and accepts display or IMU-control commands while keeping normal validation hardware-free. |
+| `sim-lib-stream-wristbridge` | Local wrist bridge routes that adapt watch imports, BLE, phone relay, and Zepp companion data into the shared worn-device provider surface without enabling hardware lanes during CI. |
+| `sim-viture-ffi` | Unsafe-isolated VITURE SDK boundary that discovers a local dynamic SDK, wraps Carina pose and IMU/control entry points, and returns a hardware-free unsupported result when no SDK is loadable. |
 
 ## Architecture
 
@@ -75,11 +79,17 @@ so default validation stays hardware-free.
 
 ## Validation
 
-These commands run in the constellation workspace; only `sim-kernel` builds from
-a lone clone today (see `DEVELOPING.md` in `sim-sdk`).
+This repository builds standalone against the published SIM crates on
+crates.io. The public validation gate is:
 
 ```bash
-cargo fmt --check && cargo test --workspace && cargo clippy --workspace -- -D warnings && cargo doc --workspace --no-deps
+cargo fmt --all --check
+cargo run -p xtask -- check-file-sizes
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo doc --workspace --no-deps
+cargo clippy --workspace --all-features --all-targets -- -D warnings
+cargo test --workspace --all-features
 cargo run -p xtask -- simdoc --check
 ```
 
@@ -93,3 +103,9 @@ cargo run -p xtask -- simdoc --check
 - Diagrams: `docs/diagrams/src/` and `docs/diagrams/generated/`
 
 The same command writes split contract files under `docs/generated/`.
+
+## File Size Gate
+
+`cargo run -p xtask -- check-file-sizes` scans Rust source files and fails when
+an entrypoint (`lib.rs`, `main.rs`, or `mod.rs`) exceeds 250 lines or any other
+Rust source file exceeds 700 lines.

@@ -2,10 +2,10 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use sim_kernel::{Error, Expr, Result, Symbol};
+use sim_kernel::{Cx, Error, Expr, Result, Symbol};
 
 use crate::{
-    HostBackend, HostDeviceInventory, HostOpenStream, HostStreamConfigRequest,
+    HostBackend, HostDeviceInventory, HostOpenPlan, HostOpenStream, HostStreamConfigRequest,
     missing_capability_card_expr,
 };
 
@@ -54,15 +54,63 @@ impl HostBackendRegistry {
             .collect()
     }
 
-    /// Opens a stream using the backend named in the request.
+    /// Resolves the authority and effect plan for a request without opening it.
+    pub fn plan_open(&self, request: &HostStreamConfigRequest) -> Result<HostOpenPlan> {
+        let backend = self.backend_or_error(request.backend())?;
+        let inventory = backend.enumerate()?;
+        let device = inventory
+            .devices()
+            .iter()
+            .find(|device| device.id() == request.device())
+            .ok_or_else(|| {
+                Error::Eval(format!(
+                    "stream host backend {} has no device {}",
+                    request.backend(),
+                    request.device()
+                ))
+            })?;
+        if device.media() != request.media() {
+            return Err(Error::TypeMismatch {
+                expected: "request media matching host device",
+                found: "request media for another host device",
+            });
+        }
+        if device.direction() != request.direction() {
+            return Err(Error::TypeMismatch {
+                expected: "request direction matching host device",
+                found: "request direction for another host device",
+            });
+        }
+        Ok(device.open_plan())
+    }
+
+    /// Opens a stream using the backend named in the request after checking
+    /// authority and recording the declared device effects.
+    pub fn open_checked(
+        &self,
+        cx: &mut Cx,
+        request: HostStreamConfigRequest,
+    ) -> Result<HostOpenStream> {
+        self.plan_open(&request)?.enforce(cx)?;
+        self.open(request)
+    }
+
+    /// Opens a stream using the backend named in the request through the
+    /// backend-level compatibility dispatch path.
+    ///
+    /// Runtime and public host opens should use [`Self::open_checked`] so the
+    /// request's authority and device effects are handled first.
     pub fn open(&self, request: HostStreamConfigRequest) -> Result<HostOpenStream> {
-        let backend = self.backends.get(request.backend()).ok_or_else(|| {
-            Error::Eval(format!(
-                "stream host backend {} is not registered",
-                request.backend()
-            ))
-        })?;
+        self.plan_open(&request)?;
+        let backend = self.backend_or_error(request.backend())?;
         backend.open(request)
+    }
+
+    fn backend_or_error(&self, backend: &Symbol) -> Result<Arc<dyn HostBackend>> {
+        self.backends
+            .get(backend)
+            .cloned()
+            .ok_or_else(|| Error::Eval(format!("stream host backend {backend} is not registered")))
     }
 
     /// Emits backend, device, and port browse card expressions.

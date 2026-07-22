@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use sim_kernel::{Expr, Symbol};
+// conformance: hardware host surfaces select placement adapters.
+
+use sim_kernel::{Cx, DefaultFactory, EagerPolicy, Expr, Symbol};
 use sim_lib_stream_core::{
     BufferPolicy, ClockDomain, DomainBridgeKind, LatencyClass, PcmPacket, PlacedFragment,
     RateContract, StreamDirection, StreamItem, StreamMedia, StreamPacket, TransportProfile,
@@ -13,6 +15,7 @@ use crate::{
     fake_backend_symbol, lan_bar_delay_mode_symbol, lan_experimental_remote_sample_capability,
     lan_jitter_buffered_mode_symbol, lan_peer_site_symbol,
     lan_pinned_sample_experimental_diagnostic, lan_pinned_sample_refusal_diagnostic,
+    stream_host_capability,
 };
 
 #[test]
@@ -43,17 +46,21 @@ fn audio_site_router_opens_modeled_backend() {
     router.register(site);
 
     assert!(router.site(&key).is_some());
+    let mut cx = authorized_cx();
     let opened = router
-        .open_placement(AudioPlacementRequest {
-            site_key: key,
-            stream_request: HostStreamConfigRequest::new(
-                fake_backend_symbol(),
-                Symbol::new("fake/pcm"),
-                StreamMedia::Pcm,
-                HostDirection::Output,
-                BufferPolicy::bounded(8).unwrap(),
-            ),
-        })
+        .open_placement_checked(
+            &mut cx,
+            AudioPlacementRequest {
+                site_key: key,
+                stream_request: HostStreamConfigRequest::new(
+                    fake_backend_symbol(),
+                    Symbol::new("fake/pcm"),
+                    StreamMedia::Pcm,
+                    HostDirection::Output,
+                    BufferPolicy::bounded(8).unwrap(),
+                ),
+            },
+        )
         .unwrap();
 
     assert_eq!(opened.config().media(), StreamMedia::Pcm);
@@ -199,4 +206,13 @@ fn sample_fragment() -> PlacedFragment {
     .unwrap();
     PlacedFragment::new(Symbol::new("sample-node"), Expr::Bool(true))
         .with_output_edge(edge.with_envelopes(vec![envelope]))
+}
+
+fn authorized_cx() -> Cx {
+    let mut cx = Cx::new(
+        std::sync::Arc::new(EagerPolicy),
+        std::sync::Arc::new(DefaultFactory),
+    );
+    cx.grant(stream_host_capability());
+    cx
 }

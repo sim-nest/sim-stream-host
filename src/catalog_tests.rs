@@ -1,17 +1,18 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 
 use sim_kernel::{
     AbiVersion, Cx, DefaultFactory, EagerPolicy, Export, Lib, LibManifest, LibTarget, Linker,
     LoadCx, Result, Symbol, Version,
 };
+use sim_lib_midi_live::{LiveMidiDirection, LiveMidiSession};
 
 use crate::{
-    DeviceCatalog, DeviceDirection, DeviceKind, Placement, StreamEvalSite,
-    audio_device_export_symbol,
+    CatalogDeviceProvider, DeviceCatalog, DeviceDirection, DeviceKind, DeviceRecord, Placement,
+    StreamEvalSite, audio_site_export_symbol, stream_host_capability,
 };
-
-#[cfg(any(feature = "rtmidi-hardware", feature = "ble-midi-hardware"))]
-use crate::{DeviceProvider, DeviceRecord};
 
 #[test]
 fn catalog_default_modeled_enumerates_midi_and_audio() {
@@ -69,7 +70,10 @@ fn default_audio_catalog_has_no_retired_transport_targets() {
 #[test]
 fn catalog_open_modeled_midi_input_returns_modeled_placement() {
     let catalog = DeviceCatalog::default_modeled();
-    let site = catalog.open(&Symbol::new("midi/model/in-0")).unwrap();
+    let mut cx = authorized_cx();
+    let site = catalog
+        .open_checked(&mut cx, &Symbol::new("midi/model/in-0"))
+        .unwrap();
 
     assert_eq!(site.placement(), &Placement::Modeled);
     assert_eq!(site.device_record().kind, DeviceKind::Midi);
@@ -80,8 +84,9 @@ fn catalog_open_modeled_midi_input_returns_modeled_placement() {
 #[test]
 fn catalog_open_unknown_id_returns_error() {
     let catalog = DeviceCatalog::default_modeled();
+    let mut cx = test_cx();
     let err = catalog
-        .open(&Symbol::new("midi/no-such-device"))
+        .open_checked(&mut cx, &Symbol::new("midi/no-such-device"))
         .err()
         .unwrap();
 
@@ -91,7 +96,10 @@ fn catalog_open_unknown_id_returns_error() {
 #[test]
 fn catalog_open_live_modeled_midi_input_yields_modeled_placement() {
     let catalog = DeviceCatalog::default_modeled();
-    let mut live = catalog.open_live(&Symbol::new("midi/model/in-0")).unwrap();
+    let mut cx = authorized_cx();
+    let mut live = catalog
+        .open_live_checked(&mut cx, &Symbol::new("midi/model/in-0"))
+        .unwrap();
 
     assert_eq!(live.placement(), &Placement::Modeled);
     assert_eq!(live.device_record().kind, DeviceKind::Midi);
@@ -104,7 +112,10 @@ fn catalog_open_live_modeled_midi_input_yields_modeled_placement() {
 #[test]
 fn catalog_open_live_modeled_midi_output_exposes_sink() {
     let catalog = DeviceCatalog::default_modeled();
-    let mut live = catalog.open_live(&Symbol::new("midi/model/out-0")).unwrap();
+    let mut cx = authorized_cx();
+    let mut live = catalog
+        .open_live_checked(&mut cx, &Symbol::new("midi/model/out-0"))
+        .unwrap();
 
     assert_eq!(live.placement(), &Placement::Modeled);
     assert_eq!(live.device_record().kind, DeviceKind::Midi);
@@ -114,14 +125,102 @@ fn catalog_open_live_modeled_midi_output_exposes_sink() {
 }
 
 #[test]
+fn catalog_open_live_hardware_midi_uses_provider_live_session() {
+    let live_opens = Arc::new(AtomicUsize::new(0));
+    let mut catalog = DeviceCatalog::new();
+    catalog.register(Box::new(FixtureLiveMidiProvider {
+        live_opens: Arc::clone(&live_opens),
+    }));
+    let mut cx = authorized_cx();
+
+    let mut live = catalog
+        .open_live_checked(&mut cx, &Symbol::new("midi/hardware/live-0"))
+        .unwrap();
+
+    assert_eq!(live_opens.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        live.placement(),
+        &Placement::Hardware {
+            transport: Symbol::new("fixture-midi"),
+        }
+    );
+    assert_eq!(live.source_mut().tpq(), 960);
+    assert!(live.sink_mut().is_some());
+    Box::new(live).close().unwrap();
+}
+
+#[test]
 fn catalog_open_live_non_midi_returns_error() {
     let catalog = DeviceCatalog::default_modeled();
+    let mut cx = authorized_cx();
     let err = catalog
-        .open_live(&Symbol::new("audio/model/stereo-0"))
+        .open_live_checked(&mut cx, &Symbol::new("audio/model/stereo-0"))
         .err()
         .unwrap();
 
     assert!(format!("{err}").contains("is not MIDI"));
+}
+
+struct FixtureLiveMidiProvider {
+    live_opens: Arc<AtomicUsize>,
+}
+
+impl CatalogDeviceProvider for FixtureLiveMidiProvider {
+    fn enumerate(&self) -> sim_kernel::Result<Vec<DeviceRecord>> {
+        Ok(vec![fixture_live_midi_record()])
+    }
+
+    fn open(&self, id: &Symbol) -> sim_kernel::Result<Box<dyn StreamEvalSite>> {
+        let record = fixture_live_midi_record();
+        if &record.id != id {
+            return Err(sim_kernel::Error::Eval(format!(
+                "unknown fixture live MIDI port '{id}'"
+            )));
+        }
+        Ok(Box::new(FixtureLiveMidiSite {
+            record,
+            live_opens: Arc::clone(&self.live_opens),
+        }))
+    }
+}
+
+struct FixtureLiveMidiSite {
+    record: DeviceRecord,
+    live_opens: Arc<AtomicUsize>,
+}
+
+impl StreamEvalSite for FixtureLiveMidiSite {
+    fn placement(&self) -> &Placement {
+        &self.record.placement
+    }
+
+    fn device_record(&self) -> &DeviceRecord {
+        &self.record
+    }
+
+    fn live_midi_session(&self) -> Option<sim_kernel::Result<LiveMidiSession>> {
+        self.live_opens.fetch_add(1, Ordering::SeqCst);
+        Some(
+            LiveMidiSession::with_ring(960, 4, LiveMidiDirection::Duplex)
+                .map_err(|error| sim_kernel::Error::Eval(format!("fixture live MIDI: {error}"))),
+        )
+    }
+
+    fn close(self: Box<Self>) -> sim_kernel::Result<()> {
+        Ok(())
+    }
+}
+
+fn fixture_live_midi_record() -> DeviceRecord {
+    DeviceRecord {
+        id: Symbol::new("midi/hardware/live-0"),
+        display_name: "Fixture Live MIDI".to_owned(),
+        kind: DeviceKind::Midi,
+        direction: DeviceDirection::Duplex,
+        placement: Placement::Hardware {
+            transport: Symbol::new("fixture-midi"),
+        },
+    }
 }
 
 #[cfg(feature = "rtmidi-hardware")]
@@ -172,7 +271,10 @@ fn catalog_with_ble_midi_keeps_hardware_registration_opt_in() {
                     transport: Symbol::new("ble-midi"),
                 }
     }));
-    let site = catalog.open(&Symbol::new("ble-midi/bluez-0")).unwrap();
+    let mut cx = authorized_cx();
+    let site = catalog
+        .open_checked(&mut cx, &Symbol::new("ble-midi/bluez-0"))
+        .unwrap();
     assert_eq!(site.device_record().direction, DeviceDirection::Duplex);
     site.close().unwrap();
 }
@@ -196,7 +298,7 @@ impl FixtureHardwareMidiProvider {
 }
 
 #[cfg(any(feature = "rtmidi-hardware", feature = "ble-midi-hardware"))]
-impl DeviceProvider for FixtureHardwareMidiProvider {
+impl CatalogDeviceProvider for FixtureHardwareMidiProvider {
     fn enumerate(&self) -> sim_kernel::Result<Vec<DeviceRecord>> {
         Ok(vec![DeviceRecord {
             id: Symbol::new(self.id),
@@ -253,7 +355,7 @@ impl ModeledBackendLib {
     }
 
     fn device_symbol(&self) -> Symbol {
-        audio_device_export_symbol(self.transport)
+        audio_site_export_symbol(self.transport)
     }
 }
 
@@ -266,17 +368,26 @@ impl Lib for ModeledBackendLib {
             target: LibTarget::HostRegistered,
             requires: Vec::new(),
             capabilities: Vec::new(),
-            exports: vec![Export::Value {
+            exports: vec![Export::Site {
                 symbol: self.device_symbol(),
+                runtime_id: None,
             }],
         }
     }
 
     fn load(&self, cx: &mut LoadCx, linker: &mut Linker) -> Result<()> {
-        linker.value(self.device_symbol(), cx.factory().bool(true)?)
+        linker
+            .site_value(self.device_symbol(), cx.factory().bool(true)?)
+            .map(|_| ())
     }
 }
 
 fn test_cx() -> Cx {
     Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory))
+}
+
+fn authorized_cx() -> Cx {
+    let mut cx = test_cx();
+    cx.grant(stream_host_capability());
+    cx
 }

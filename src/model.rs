@@ -1,8 +1,8 @@
 //! Host backend, device, direction, and open-plan model records.
 
 use sim_kernel::{
-    CapabilityName, Expr, Symbol,
-    effect::{effect_device_read_kind, effect_device_write_kind},
+    CapabilityName, Cx, Expr, Ref, Result, Symbol,
+    effect::{Effect, effect_abort_op_key, effect_resume_op_key, resolve_effect},
 };
 use sim_lib_stream_core::{BufferPolicy, StreamDirection, StreamMedia, StreamMetadata};
 
@@ -11,6 +11,16 @@ use crate::capability::HostBackendCapability;
 /// Returns the capability name gating host stream device access.
 pub fn stream_host_capability() -> CapabilityName {
     CapabilityName::new("stream.host")
+}
+
+/// Returns the stream-host effect kind for device reads.
+pub fn stream_host_device_read_effect_kind() -> Symbol {
+    Symbol::qualified("effect", "device-read")
+}
+
+/// Returns the stream-host effect kind for device writes.
+pub fn stream_host_device_write_effect_kind() -> Symbol {
+    Symbol::qualified("effect", "device-write")
 }
 
 /// Stable metadata describing a host backend.
@@ -48,13 +58,13 @@ pub enum HostDirection {
 
 /// Resolved plan describing how a device would be opened.
 ///
-/// Names the backend, device, the effect kind the open performs, and the
+/// Names the backend, device, the effect kinds the open performs, and the
 /// capabilities the open requires.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HostOpenPlan {
     backend: Symbol,
     device: Symbol,
-    effect_kind: Symbol,
+    effect_kinds: Vec<Symbol>,
     requires: Vec<CapabilityName>,
 }
 
@@ -214,7 +224,7 @@ impl HostDeviceSpec {
         HostOpenPlan {
             backend: self.backend.clone(),
             device: self.id.clone(),
-            effect_kind: self.direction.effect_kind(),
+            effect_kinds: self.direction.effect_kinds(),
             requires: vec![stream_host_capability()],
         }
     }
@@ -270,17 +280,36 @@ impl HostDirection {
         }
     }
 
-    /// Returns the effect kind an open in this direction performs (device read
-    /// for input, device write for output or duplex).
-    pub fn effect_kind(self) -> Symbol {
+    /// Returns the effect kinds an open in this direction performs.
+    pub fn effect_kinds(self) -> Vec<Symbol> {
         match self {
-            Self::Input => effect_device_read_kind(),
-            Self::Output | Self::Duplex => effect_device_write_kind(),
+            Self::Input => vec![stream_host_device_read_effect_kind()],
+            Self::Output => vec![stream_host_device_write_effect_kind()],
+            Self::Duplex => vec![
+                stream_host_device_read_effect_kind(),
+                stream_host_device_write_effect_kind(),
+            ],
         }
     }
 }
 
 impl HostOpenPlan {
+    /// Builds an open plan from resolved backend, device, effects, and
+    /// required capabilities.
+    pub fn new(
+        backend: Symbol,
+        device: Symbol,
+        effect_kinds: Vec<Symbol>,
+        requires: Vec<CapabilityName>,
+    ) -> Self {
+        Self {
+            backend,
+            device,
+            effect_kinds,
+            requires,
+        }
+    }
+
     /// Returns the backend that would perform the open.
     pub fn backend(&self) -> &Symbol {
         &self.backend
@@ -291,13 +320,39 @@ impl HostOpenPlan {
         &self.device
     }
 
-    /// Returns the effect kind the open performs.
-    pub fn effect_kind(&self) -> &Symbol {
-        &self.effect_kind
+    /// Returns the effect kinds the open performs.
+    pub fn effect_kinds(&self) -> &[Symbol] {
+        &self.effect_kinds
     }
 
     /// Returns the capabilities the open requires.
     pub fn requires(&self) -> &[CapabilityName] {
         &self.requires
+    }
+
+    /// Enforces the plan's capabilities and records every declared device
+    /// effect in the supplied context before a host stream is opened.
+    pub fn enforce(&self, cx: &mut Cx) -> Result<()> {
+        for capability in &self.requires {
+            cx.require(capability)?;
+        }
+        for effect_kind in &self.effect_kinds {
+            let effect = Effect::new(
+                effect_kind.clone(),
+                Ref::Symbol(self.device.clone()),
+                Ref::Symbol(self.backend.clone()),
+                Ref::Symbol(Symbol::qualified("stream/host", "open-result")),
+                effect_resume_op_key(),
+                effect_abort_op_key(),
+            )
+            .with_requirements(self.requires.clone());
+            resolve_effect(cx, effect, |_cx, _effect| {
+                Ok(Ref::Symbol(Symbol::qualified(
+                    "stream/host",
+                    "open-authorized",
+                )))
+            })?;
+        }
+        Ok(())
     }
 }

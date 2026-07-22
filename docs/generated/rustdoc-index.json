@@ -1,5 +1,47 @@
 {
-  "schema": "sim.rustdoc-index.v1",
-  "repo": "sim-stream-host",
-  "target_doc": "target/doc/"
+  "generator": "xtask repo-contract v1",
+  "packages": [
+    {
+      "crate_name": "sim_lib_stream_halo",
+      "group": "workspace",
+      "manifest": "crates/sim-lib-stream-halo/Cargo.toml",
+      "package": "sim-lib-stream-halo",
+      "summary": "Local Halo glasses provider and byte-budgeted Lua glance renderer."
+    },
+    {
+      "crate_name": "sim_lib_stream_host",
+      "group": "workspace",
+      "manifest": "Cargo.toml",
+      "package": "sim-lib-stream-host",
+      "summary": "Host-device stream backend substrate."
+    },
+    {
+      "crate_name": "sim_lib_stream_viture",
+      "group": "workspace",
+      "manifest": "crates/sim-lib-stream-viture/Cargo.toml",
+      "package": "sim-lib-stream-viture",
+      "summary": "Local VITURE glasses provider for SIM XR stream samples."
+    },
+    {
+      "crate_name": "sim_lib_stream_wristbridge",
+      "group": "workspace",
+      "manifest": "crates/sim-lib-stream-wristbridge/Cargo.toml",
+      "package": "sim-lib-stream-wristbridge",
+      "summary": "Local watch provider routes for SIM worn streams."
+    },
+    {
+      "crate_name": "sim_viture_ffi",
+      "group": "workspace",
+      "manifest": "crates/sim-viture-ffi/Cargo.toml",
+      "package": "sim-viture-ffi",
+      "summary": "Unsafe-isolated dynamic loader for VITURE glasses SDK entry points."
+    },
+    {
+      "crate_name": "xtask",
+      "group": "workspace",
+      "manifest": "xtask/Cargo.toml",
+      "package": "xtask",
+      "summary": "Repository maintenance tasks for sim-stream-host."
+    }
+  ]
 }

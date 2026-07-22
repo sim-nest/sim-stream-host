@@ -1,9 +1,9 @@
 [package]
 name = "sim-lib-stream-host"
-version = "0.1.0"
+version = "0.1.4"
 edition = "2024"
 license = "MPL-2.0"
-description = "Host-device stream backend substrate for STREAM 6."
+description = "Host-device stream backend substrate for SIM streams."
 readme = "README.md"
 publish = true
 repository = "https://github.com/sim-nest/sim-stream-host"
@@ -12,6 +12,10 @@ homepage = "https://github.com/sim-nest/sim-stream-host"
 [workspace]
 resolver = "3"
 members = [
+  "crates/sim-viture-ffi",
+  "crates/sim-lib-stream-halo",
+  "crates/sim-lib-stream-viture",
+  "crates/sim-lib-stream-wristbridge",
   "xtask",
 ]
 
@@ -25,10 +29,13 @@ homepage = "https://github.com/sim-nest/sim-stream-host"
 unsafe_code = "forbid"
 
 [dependencies]
-sim-kernel = { version = "0.1.0" }
+sim-config = { version = "0.1.1" }
+sim-kernel = { version = "0.1.4" }
 sim-lib-midi-core = { version = "0.1.0" }
 sim-lib-midi-live = { version = "0.1.0" }
 sim-lib-stream-core = { version = "0.1.0" }
+sim-lib-view-device = { version = "0.1.0" }
+sim-value = { version = "0.1.2" }
 
 [features]
 default = ["rtp-midi"]
@@ -37,7 +44,10 @@ rtmidi-hardware = []
 ble-midi-hardware = []
 
 [dev-dependencies]
-sim-kernel = { version = "0.1", features = ["test-support"] }
+sim-codec = { version = "0.1.0" }
+sim-codec-lisp = { version = "0.1.0" }
+sim-kernel = { version = "0.1.4", features = ["test-support"] }
+sim-lib-numbers-i64 = { version = "0.1.1" }
 
 [lints]
 workspace = true

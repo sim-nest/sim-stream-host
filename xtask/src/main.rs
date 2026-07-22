@@ -1,9 +1,10 @@
 #![forbid(unsafe_code)]
+//! Repository maintenance tasks for sim-stream-host.
 
-mod simdoc;
+mod tooling;
 
 fn main() {
-    if let Err(err) = simdoc::run(std::env::args().collect()) {
+    if let Err(err) = tooling::run(std::env::args().collect()) {
         eprintln!("{err}");
         std::process::exit(1);
     }

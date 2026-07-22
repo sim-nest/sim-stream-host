@@ -23,7 +23,17 @@ pub struct ProcessRingSnapshot {
 }
 
 /// Preallocated bounded ring used at process-site stream boundaries.
-#[derive(Clone, Debug)]
+///
+/// Cloning is unsupported: a ring handle owns one process-boundary buffer, so
+/// copies must be explicit higher-level handles with documented shared state.
+///
+/// ```compile_fail
+/// use sim_lib_stream_host::ProcessSharedRing;
+///
+/// let ring = ProcessSharedRing::<u8>::with_capacity(1).unwrap();
+/// let _copy = ring.clone();
+/// ```
+#[derive(Debug)]
 pub struct ProcessSharedRing<T> {
     slots: Vec<Option<T>>,
     head: usize,

@@ -1,15 +1,63 @@
 {
   "generator": "xtask crate-catalog v1",
-  "package_count": 2,
+  "package_count": 6,
   "packages": [
     {
-      "description": "Host-device stream backend substrate for STREAM 6.",
+      "description": "Host-device stream backend substrate for SIM streams.",
       "generated_readme": false,
       "manifest": "Cargo.toml",
       "name": "sim-lib-stream-host",
       "publish": "true",
       "readme": "README.md",
       "root": ".",
+      "target_kinds": [
+        "lib"
+      ]
+    },
+    {
+      "description": "Local Halo glasses provider and byte-budgeted Lua glance renderer.",
+      "generated_readme": false,
+      "manifest": "crates/sim-lib-stream-halo/Cargo.toml",
+      "name": "sim-lib-stream-halo",
+      "publish": "true",
+      "readme": "crates/sim-lib-stream-halo/README.md",
+      "root": "crates/sim-lib-stream-halo",
+      "target_kinds": [
+        "lib"
+      ]
+    },
+    {
+      "description": "Local VITURE glasses provider for SIM XR stream samples.",
+      "generated_readme": false,
+      "manifest": "crates/sim-lib-stream-viture/Cargo.toml",
+      "name": "sim-lib-stream-viture",
+      "publish": "true",
+      "readme": "crates/sim-lib-stream-viture/README.md",
+      "root": "crates/sim-lib-stream-viture",
+      "target_kinds": [
+        "lib"
+      ]
+    },
+    {
+      "description": "Local watch provider routes for SIM worn streams.",
+      "generated_readme": true,
+      "manifest": "crates/sim-lib-stream-wristbridge/Cargo.toml",
+      "name": "sim-lib-stream-wristbridge",
+      "publish": "true",
+      "readme": "crates/sim-lib-stream-wristbridge/README.md",
+      "root": "crates/sim-lib-stream-wristbridge",
+      "target_kinds": [
+        "lib"
+      ]
+    },
+    {
+      "description": "Unsafe-isolated dynamic loader for VITURE glasses SDK entry points.",
+      "generated_readme": false,
+      "manifest": "crates/sim-viture-ffi/Cargo.toml",
+      "name": "sim-viture-ffi",
+      "publish": "true",
+      "readme": "crates/sim-viture-ffi/README.md",
+      "root": "crates/sim-viture-ffi",
       "target_kinds": [
         "lib"
       ]

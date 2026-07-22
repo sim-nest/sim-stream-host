@@ -1,8 +1,12 @@
 id = "fake-backend"
-title = "Fake host backend descriptor"
+title = "Fake host backend"
 codec = "lisp"
 setup = "setup.siml"
 purpose = "purpose.md"
 order = 10
-tags = ["stream", "host", "fake", "sandbox-descriptor"]
+tags = ["stream", "host", "fake", "deterministic"]
 requires = ["stream-host", "codec/lisp"]
+
+[[expect]]
+form = 0
+result = "(expr:map [stream-host/backend stream/host/fake] [stream-host/callback-queue stream-host/bounded] [stream-host/clock stream/clock-domain/server-frame] [stream-host/device (expr:symbol nil \"fake/data\")] [stream-host/devices 4] [stream-host/hardware-required false] [stream-host/kind stream-host/fake-backend] [stream-host/media stream/media/data] [stream-host/ports 4])"

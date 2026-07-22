@@ -1,6 +1,70 @@
 //! Host backend capability metadata and browse card helpers.
 
-use sim_kernel::{Expr, Symbol};
+use sim_kernel::{CapabilityName, Expr, Symbol};
+
+/// Capability helpers for device-local sensors and actuators.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DeviceCapability {
+    /// Pose or spatial tracking samples.
+    Pose,
+    /// Camera frames or still captures.
+    Camera,
+    /// Health or biometric samples.
+    Health,
+    /// Location samples.
+    Location,
+    /// Microphone input samples.
+    Mic,
+    /// Vendor diagnostic reports.
+    VendorReport,
+}
+
+impl DeviceCapability {
+    /// All baseline device capabilities.
+    pub const ALL: [Self; 6] = [
+        Self::Pose,
+        Self::Camera,
+        Self::Health,
+        Self::Location,
+        Self::Mic,
+        Self::VendorReport,
+    ];
+
+    /// Stable capability name, suitable for `Cx::require`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pose => "device/pose",
+            Self::Camera => "device/camera",
+            Self::Health => "device/health",
+            Self::Location => "device/location",
+            Self::Mic => "device/mic",
+            Self::VendorReport => "device/vendor-report",
+        }
+    }
+
+    /// Returns the kernel capability name.
+    pub fn capability_name(self) -> CapabilityName {
+        CapabilityName::new(self.as_str())
+    }
+
+    /// Returns the visible grant symbol used by consent receipts.
+    pub fn grant_symbol(self) -> Symbol {
+        Symbol::qualified("device", self.local_name())
+    }
+
+    /// Resolves a baseline helper from a capability name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|capability| capability.as_str() == name)
+    }
+
+    fn local_name(self) -> &'static str {
+        self.as_str()
+            .strip_prefix("device/")
+            .expect("device capability names keep the device/ prefix")
+    }
+}
 
 /// Capability advertised by a host backend.
 ///

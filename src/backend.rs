@@ -1,6 +1,6 @@
 //! Generic host backend trait and opened stream handle.
 
-use std::{rc::Rc, sync::Arc};
+use std::{cell::Cell, rc::Rc, sync::Arc};
 
 use sim_kernel::Result;
 use sim_lib_stream_core::StreamValue;
@@ -19,6 +19,12 @@ pub trait HostBackend: Send + Sync {
     fn enumerate(&self) -> Result<HostDeviceInventory>;
 
     /// Opens a stream according to the requested host configuration.
+    ///
+    /// This is backend-level dispatch for implementations and already checked
+    /// callers. Public host opens should route through
+    /// [`HostBackendRegistry::open_checked`](crate::HostBackendRegistry::open_checked)
+    /// so `stream.host` authority and device effects are handled before the
+    /// backend is reached.
     fn open(&self, request: HostStreamConfigRequest) -> Result<HostOpenStream>;
 }
 
@@ -40,7 +46,28 @@ pub trait HostStreamDriver {
 pub struct HostOpenStream {
     config: HostStreamConfig,
     queue: HostCallbackQueue,
-    driver: Option<Rc<dyn HostStreamDriver>>,
+    driver: Option<Rc<HostDriverHandle>>,
+}
+
+struct HostDriverHandle {
+    driver: Rc<dyn HostStreamDriver>,
+    closed: Cell<bool>,
+}
+
+impl HostDriverHandle {
+    fn new(driver: Rc<dyn HostStreamDriver>) -> Self {
+        Self {
+            driver,
+            closed: Cell::new(false),
+        }
+    }
+
+    fn shutdown_once(&self) -> Result<()> {
+        if self.closed.replace(true) {
+            return Ok(());
+        }
+        self.driver.shutdown()
+    }
 }
 
 impl HostOpenStream {
@@ -60,7 +87,7 @@ impl HostOpenStream {
         Self {
             config,
             queue: HostCallbackQueue::new(stream),
-            driver: Some(driver),
+            driver: Some(Rc::new(HostDriverHandle::new(driver))),
         }
     }
 
@@ -76,7 +103,7 @@ impl HostOpenStream {
         Ok(Self {
             config,
             queue,
-            driver: Some(driver),
+            driver: Some(Rc::new(HostDriverHandle::new(driver))),
         })
     }
 
@@ -146,7 +173,7 @@ impl HostOpenStream {
 
     fn shutdown_driver(&self) -> Result<()> {
         if let Some(driver) = &self.driver {
-            driver.shutdown()?;
+            driver.shutdown_once()?;
         }
         Ok(())
     }
