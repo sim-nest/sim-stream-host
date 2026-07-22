@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+// conformance: hardware host surfaces select placement adapters.
+
 use sim_kernel::{Cx, DefaultFactory, EagerPolicy, Expr, Symbol};
 use sim_lib_stream_core::{
     BufferPolicy, ClockDomain, DomainBridgeKind, LatencyClass, PcmPacket, PlacedFragment,
