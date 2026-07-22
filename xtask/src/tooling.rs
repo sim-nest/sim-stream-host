@@ -10,7 +10,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
         .get(1)
         .map(String::as_str)
         .ok_or_else(|| usage(program))?;
-    if !matches!(command, "simdoc" | "check-file-sizes") {
+    if !matches!(command, "simdoc" | "index-check" | "check-file-sizes") {
         return Err(usage(program));
     }
 
@@ -21,8 +21,15 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
     child.arg(manifest);
     child.args(["--quiet", "--"]);
     child.arg(command);
-    child.arg("--repo-root");
-    child.arg(&root);
+    if command == "index-check" {
+        if !has_repo_arg(&args) {
+            child.arg("--repo");
+            child.arg(&root);
+        }
+    } else {
+        child.arg("--repo-root");
+        child.arg(&root);
+    }
     for arg in args.iter().skip(2) {
         child.arg(arg);
     }
@@ -40,7 +47,15 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
 }
 
 fn usage(program: &str) -> String {
-    format!("usage: {program} simdoc [--check] | {program} check-file-sizes")
+    format!(
+        "usage: {program} simdoc [--check] | {program} index-check [--repo PATH] [--strict SPEC] | {program} check-file-sizes"
+    )
+}
+
+fn has_repo_arg(args: &[String]) -> bool {
+    args.iter()
+        .skip(2)
+        .any(|arg| arg == "--repo" || arg.starts_with("--repo="))
 }
 
 fn locate_sim_tooling_manifest(repo_root: &Path) -> Result<PathBuf, String> {

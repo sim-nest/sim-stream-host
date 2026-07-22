@@ -1,0 +1,58 @@
+schema = "sim.features"
+
+[enforcement.audience]
+code = "strict"
+framework = "strict"
+
+[enforcement.route]
+major_entrypoints = "advisory"
+frameworks = "advisory"
+
+[[feature]]
+id = "feature/sim-stream-host/generated-docs"
+title = "Repository documentation surface"
+summary = "Publish generated package, card, rustdoc, and index facts for stream host and hardware bridge crates."
+owner = "crate/xtask"
+audiences = ["code"]
+guidance = "Use this row when checking the generated documentation and index lane for stream host surfaces."
+claims_anchors = [
+  "anchor/cli/xtask",
+  "anchor/crate/xtask",
+  "anchor/doc/generated/card-index",
+  "anchor/doc/generated/feature-map",
+  "anchor/doc/generated/provenance",
+  "anchor/doc/generated/repo-contract",
+  "anchor/doc/generated/rustdoc-index",
+  "anchor/doc/generated/sim-index-fragment",
+  "anchor/repo/sim-stream-host",
+]
+claims_surfaces = [
+  "cli/xtask",
+  "docs/sim-stream-host/generated",
+]
+
+[[feature]]
+id = "feature/sim-stream-host/hardware-host-surfaces"
+title = "Hardware host surfaces"
+summary = "Collect stream-host placement, Viture glasses, Halo glasses, watch bridge, and native FFI adapters as one hardware-facing code feature."
+owner = "crate/sim-lib-stream-host"
+audiences = ["code", "framework"]
+guidance = "Use this row when placing a stream on host hardware or choosing a modeled device adapter."
+claims_anchors = [
+  "anchor/crate/sim-lib-stream-halo",
+  "anchor/crate/sim-lib-stream-host",
+  "anchor/crate/sim-lib-stream-viture",
+  "anchor/crate/sim-lib-stream-wristbridge",
+  "anchor/crate/sim-viture-ffi",
+]
+claims_surfaces = [
+  "site/sim-lib-stream-host",
+]
+
+[[route]]
+id = "route/add-hardware-host-surface"
+task = "Add a hardware host surface"
+audiences = ["code", "framework"]
+steps = [
+  { feature = "feature/sim-stream-host/hardware-host-surfaces", why = "The host row owns placement, device adapters, and hardware-facing stream surfaces." },
+]
