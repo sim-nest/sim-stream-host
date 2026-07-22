@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use sim_kernel::{Cx, DefaultFactory, EagerPolicy, Expr, Symbol};
+use sim_kernel::{Cx, DefaultFactory, EagerPolicy, Symbol};
 use sim_lib_stream_core::{BufferPolicy, ClockDomain, MidiPacket, MidiPacketEvent, StreamMedia};
+pub(super) use sim_value::access::field;
 
 use crate::{
     HostClockInfo, HostDirection, HostLatencyInfo, HostStreamConfig, HostStreamConfigRequest,
@@ -69,16 +70,4 @@ pub(super) fn note_packet(ticks: i64) -> MidiPacket {
         MidiPacketEvent::new(ticks, 480, vec![0x90, 60, 100]).unwrap(),
     ])
     .unwrap()
-}
-
-pub(super) fn field<'a>(expr: &'a Expr, name: &str) -> Option<&'a Expr> {
-    let Expr::Map(entries) = expr else {
-        return None;
-    };
-    entries.iter().find_map(|(key, value)| match key {
-        Expr::Symbol(symbol) if symbol.namespace.is_none() && symbol.name.as_ref() == name => {
-            Some(value)
-        }
-        _ => None,
-    })
 }
