@@ -1,6 +1,6 @@
 [package]
 name = "sim-lib-stream-wristbridge"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 description = "Local watch provider routes for SIM worn streams."
@@ -10,9 +10,9 @@ repository = "https://github.com/sim-nest/sim-stream-host"
 homepage = "https://github.com/sim-nest/sim-stream-host"
 
 [dependencies]
-sim-kernel = { version = "0.1.4" }
-sim-lib-stream-host = { version = "0.1.4", path = "../.." }
-sim-value = { version = "0.1.2" }
+sim-kernel = { version = "0.2.0" }
+sim-lib-stream-host = { version = "0.1.6", path = "../.." }
+sim-value = { version = "0.2.0" }
 
 [dev-dependencies]
 
