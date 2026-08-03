@@ -55,7 +55,7 @@ jobs:
         with:
           repository: sim-nest/sim-tooling
           path: sim-tooling
-      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: dtolnay/rust-toolchain@1.100.0
         with:
           components: rustfmt, clippy
       - run: cargo fmt --all --check
