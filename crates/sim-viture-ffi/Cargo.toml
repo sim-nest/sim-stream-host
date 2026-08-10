@@ -10,7 +10,7 @@ repository = "https://github.com/sim-nest/sim-stream-host"
 homepage = "https://github.com/sim-nest/sim-stream-host"
 
 [dependencies]
-libloading = "0.8"
+libloading = "0.9"
 
 [lints.rust]
 unsafe_code = "allow"
