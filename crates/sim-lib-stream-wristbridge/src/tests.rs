@@ -51,7 +51,7 @@ fn stub_returns_unsupported() {
 
 #[test]
 fn watch_command_serializes_for_relay_and_mini_program_bridge() {
-    let relay = RelayLink::new("ws://127.0.0.1:9911/watch");
+    let relay = RelayLink::new("ws://relay.example.invalid:9911/watch");
     let zepp = ZeppBridgeLink::new("local-zepp-companion");
     let command = notify_command();
 
