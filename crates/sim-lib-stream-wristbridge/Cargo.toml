@@ -1,6 +1,6 @@
 [package]
 name = "sim-lib-stream-wristbridge"
-version = "0.1.1"
+version = "0.1.2"
 edition.workspace = true
 license.workspace = true
 description = "Local watch provider routes for SIM worn streams."
