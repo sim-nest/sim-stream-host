@@ -39,7 +39,7 @@ claims_surfaces = [
 [[feature]]
 id = "feature/sim-stream-host/hardware-host-surfaces"
 title = "Hardware host surfaces"
-summary = "Collect stream-host placement, Viture glasses, Halo glasses, watch bridge, and native FFI adapters as one hardware-facing code feature."
+summary = "Collect shared stream placement, Viture glasses semantics, Halo glasses semantics, and watch bridges above capsule-owned physical ports."
 owner = "crate/sim-lib-stream-host"
 audiences = ["code", "framework"]
 guidance = "Use this row when placing a stream on host hardware or choosing a modeled device adapter."
@@ -48,7 +48,6 @@ claims_anchors = [
   "anchor/crate/sim-lib-stream-host",
   "anchor/crate/sim-lib-stream-viture",
   "anchor/crate/sim-lib-stream-wristbridge",
-  "anchor/crate/sim-viture-ffi",
 ]
 claims_surfaces = [
   "site/sim-lib-stream-host",

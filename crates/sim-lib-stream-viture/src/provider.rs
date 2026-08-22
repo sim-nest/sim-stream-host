@@ -12,13 +12,14 @@ use sim_lib_stream_xr::{
     xr_pose_sample_kind_symbol,
 };
 use sim_viture_ffi::{
-    LegacyImuRate, VitureError, VitureHandle, VitureLib, VitureSdkDiscovery, unsupported_viture_lib,
+    DevicePhysicalPort, DevicePhysicalSession, LegacyImuRate, PhysicalDeviceCommand,
+    PhysicalDeviceSample, VitureError, VitureLib, ViturePhysicalPort, VitureSdkDiscovery,
+    unsupported_viture_lib,
 };
 
 use crate::{
     camera::VITURE_CAMERA_SAMPLE_KIND,
     device_control::{VitureControlPacket, encode_viture_command},
-    vio::viture_tracking_status,
 };
 
 /// Bare XR pose sample kind emitted by VITURE sessions.
@@ -60,17 +61,13 @@ impl VitureRouteKind {
 pub enum VitureRoute {
     /// Carina route backed by the VITURE SDK provider handle.
     Carina {
-        /// Loaded SDK wrapper.
-        lib: VitureLib,
-        /// Prediction horizon passed to the pose call.
-        predict_ns: u64,
+        /// Capsule-owned physical transport.
+        port: ViturePhysicalPort,
     },
     /// IMU-control route backed by the VITURE SDK.
     LegacyImu {
         /// Loaded SDK wrapper.
-        lib: VitureLib,
-        /// IMU report rate.
-        rate: LegacyImuRate,
+        port: ViturePhysicalPort,
         /// Orientation used for emitted 3DoF samples until host IMU decoding is
         /// connected.
         orientation: [f64; 4],
@@ -104,7 +101,9 @@ impl VitureProvider {
 
     /// Builds a Carina provider from a loaded SDK wrapper.
     pub fn carina(lib: VitureLib, predict_ns: u64) -> Self {
-        Self::new(VitureRoute::Carina { lib, predict_ns })
+        Self::new(VitureRoute::Carina {
+            port: ViturePhysicalPort::new(lib, predict_ns),
+        })
     }
 
     /// Attempts SDK discovery and builds a Carina provider from the result.
@@ -127,8 +126,7 @@ impl VitureProvider {
         orientation: [f64; 4],
     ) -> Self {
         Self::new(VitureRoute::LegacyImu {
-            lib,
-            rate,
+            port: ViturePhysicalPort::legacy(lib, rate),
             orientation,
         })
     }
@@ -168,28 +166,15 @@ impl VitureProvider {
     pub fn open_session(&self) -> DeviceResult<VitureSession> {
         match &self.route {
             VitureRoute::Stub => Err(DeviceError::Unsupported),
-            VitureRoute::Carina { lib, predict_ns } => {
-                let handle = lib.open_carina().map_err(map_viture_error)?;
-                Ok(VitureSession::carina(
-                    lib.clone(),
-                    handle,
-                    *predict_ns,
-                    self.profile.clone(),
-                ))
-            }
-            VitureRoute::LegacyImu {
-                lib,
-                rate,
-                orientation,
-            } => {
-                lib.legacy_init().map_err(map_viture_error)?;
-                Ok(VitureSession::legacy_imu(
-                    lib.clone(),
-                    *rate,
-                    *orientation,
-                    self.profile.clone(),
-                )?)
-            }
+            VitureRoute::Carina { port } => Ok(VitureSession::carina(
+                port.connect().map_err(map_viture_error)?,
+                self.profile.clone(),
+            )),
+            VitureRoute::LegacyImu { port, orientation } => Ok(VitureSession::legacy_imu(
+                port.connect().map_err(map_viture_error)?,
+                *orientation,
+                self.profile.clone(),
+            )?),
             VitureRoute::Scripted {
                 samples,
                 camera_frames,
@@ -215,7 +200,6 @@ impl DeviceProvider for VitureProvider {
 }
 
 /// Open VITURE session over one local route.
-#[derive(Debug)]
 pub struct VitureSession {
     profile: DeviceProfile,
     route: VitureSessionRoute,
@@ -223,17 +207,13 @@ pub struct VitureSession {
     started: bool,
 }
 
-#[derive(Debug)]
 enum VitureSessionRoute {
     Carina {
-        lib: VitureLib,
-        handle: VitureHandle,
-        predict_ns: u64,
+        session: Box<dyn DevicePhysicalSession>,
         seq: u64,
     },
     LegacyImu {
-        lib: VitureLib,
-        rate: LegacyImuRate,
+        session: Box<dyn DevicePhysicalSession>,
         orientation: [f64; 4],
         seq: u64,
     },
@@ -244,28 +224,17 @@ enum VitureSessionRoute {
 }
 
 impl VitureSession {
-    fn carina(
-        lib: VitureLib,
-        handle: VitureHandle,
-        predict_ns: u64,
-        profile: DeviceProfile,
-    ) -> Self {
+    fn carina(session: Box<dyn DevicePhysicalSession>, profile: DeviceProfile) -> Self {
         Self {
             profile,
-            route: VitureSessionRoute::Carina {
-                lib,
-                handle,
-                predict_ns,
-                seq: 0,
-            },
+            route: VitureSessionRoute::Carina { session, seq: 0 },
             sent: Vec::new(),
             started: false,
         }
     }
 
     fn legacy_imu(
-        lib: VitureLib,
-        rate: LegacyImuRate,
+        session: Box<dyn DevicePhysicalSession>,
         orientation: [f64; 4],
         profile: DeviceProfile,
     ) -> DeviceResult<Self> {
@@ -274,8 +243,7 @@ impl VitureSession {
         Ok(Self {
             profile,
             route: VitureSessionRoute::LegacyImu {
-                lib,
-                rate,
+                session,
                 orientation,
                 seq: 0,
             },
@@ -326,14 +294,10 @@ impl DeviceSession for VitureSession {
     }
 
     fn start(&mut self) -> DeviceResult<()> {
-        match &self.route {
-            VitureSessionRoute::Carina { lib, handle, .. } => {
-                lib.initialize_carina(handle).map_err(map_viture_error)?;
-                lib.start_carina(handle).map_err(map_viture_error)?;
-            }
-            VitureSessionRoute::LegacyImu { lib, rate, .. } => {
-                lib.legacy_set_imu_fq(*rate).map_err(map_viture_error)?;
-                lib.legacy_set_imu(true).map_err(map_viture_error)?;
+        match &mut self.route {
+            VitureSessionRoute::Carina { session, .. }
+            | VitureSessionRoute::LegacyImu { session, .. } => {
+                session.start().map_err(map_viture_error)?
             }
             VitureSessionRoute::Scripted { .. } => {}
         }
@@ -351,20 +315,21 @@ impl DeviceSession for VitureSession {
             {
                 Ok(None)
             }
-            VitureSessionRoute::Carina {
-                lib,
-                handle,
-                predict_ns,
-                seq,
-            } => {
-                let pose = lib
-                    .carina_pose(handle, *predict_ns)
-                    .map_err(map_viture_error)?;
+            VitureSessionRoute::Carina { session, seq } => {
+                let Some(PhysicalDeviceSample::Pose { pose, tracked }) =
+                    session.poll().map_err(map_viture_error)?
+                else {
+                    return Ok(None);
+                };
                 let sample = carina_pose_sample(
                     *seq,
-                    *predict_ns,
-                    pose.pose,
-                    viture_tracking_status(pose.status),
+                    0,
+                    pose,
+                    if tracked {
+                        XrTrackingStatus::Tracked
+                    } else {
+                        XrTrackingStatus::Lost
+                    },
                 )?;
                 *seq = seq.saturating_add(1);
                 Ok(Some(sample.to_expr()))
@@ -399,18 +364,16 @@ impl DeviceSession for VitureSession {
 
     fn send(&mut self, command: &Expr) -> DeviceResult<()> {
         let packet = encode_viture_command(command)?;
-        apply_control_packet(&self.route, &packet)?;
+        apply_control_packet(&mut self.route, &packet)?;
         self.sent.push(packet);
         Ok(())
     }
 
     fn stop(&mut self) -> DeviceResult<()> {
-        match &self.route {
-            VitureSessionRoute::Carina { lib, handle, .. } => {
-                lib.stop_carina(handle).map_err(map_viture_error)?;
-            }
-            VitureSessionRoute::LegacyImu { lib, .. } => {
-                lib.legacy_set_imu(false).map_err(map_viture_error)?;
+        match &mut self.route {
+            VitureSessionRoute::Carina { session, .. }
+            | VitureSessionRoute::LegacyImu { session, .. } => {
+                session.close().map_err(map_viture_error)?
             }
             VitureSessionRoute::Scripted { .. } => {}
         }
@@ -447,40 +410,30 @@ pub fn viture_device_profile() -> DeviceProfile {
 }
 
 fn apply_control_packet(
-    route: &VitureSessionRoute,
+    route: &mut VitureSessionRoute,
     packet: &VitureControlPacket,
 ) -> DeviceResult<()> {
-    match (route, packet) {
-        (VitureSessionRoute::Scripted { .. }, _) => Ok(()),
-        (_, VitureControlPacket::ImuReports { enabled }) => {
-            route_lib(route)?
-                .legacy_set_imu(*enabled)
-                .map_err(map_viture_error)?;
-            Ok(())
-        }
-        (_, VitureControlPacket::ImuRate { rate }) => {
-            route_lib(route)?
-                .legacy_set_imu_fq(*rate)
-                .map_err(map_viture_error)?;
-            Ok(())
-        }
-        (_, VitureControlPacket::Display3d { enabled }) => {
-            route_lib(route)?
-                .legacy_set_3d(*enabled)
-                .map_err(map_viture_error)?;
-            Ok(())
-        }
-        (_, VitureControlPacket::Brightness { .. } | VitureControlPacket::PrivacyFilm { .. }) => {
-            Ok(())
-        }
+    if matches!(route, VitureSessionRoute::Scripted { .. }) {
+        return Ok(());
+    }
+    match packet {
+        VitureControlPacket::ImuReports { enabled } => route_session(route)?
+            .send(PhysicalDeviceCommand::ImuReports(*enabled))
+            .map_err(map_viture_error),
+        VitureControlPacket::ImuRate { rate } => route_session(route)?
+            .send(PhysicalDeviceCommand::ImuRate(*rate))
+            .map_err(map_viture_error),
+        VitureControlPacket::Display3d { enabled } => route_session(route)?
+            .send(PhysicalDeviceCommand::Display3d(*enabled))
+            .map_err(map_viture_error),
+        VitureControlPacket::Brightness { .. } | VitureControlPacket::PrivacyFilm { .. } => Ok(()),
     }
 }
 
-fn route_lib(route: &VitureSessionRoute) -> DeviceResult<&VitureLib> {
+fn route_session(route: &mut VitureSessionRoute) -> DeviceResult<&mut dyn DevicePhysicalSession> {
     match route {
-        VitureSessionRoute::Carina { lib, .. } | VitureSessionRoute::LegacyImu { lib, .. } => {
-            Ok(lib)
-        }
+        VitureSessionRoute::Carina { session, .. }
+        | VitureSessionRoute::LegacyImu { session, .. } => Ok(session.as_mut()),
         VitureSessionRoute::Scripted { .. } => Err(DeviceError::Unsupported),
     }
 }
