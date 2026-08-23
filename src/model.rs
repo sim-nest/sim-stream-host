@@ -338,6 +338,7 @@ impl HostOpenPlan {
         }
         for effect_kind in &self.effect_kinds {
             let effect = Effect::new(
+                cx.fresh_handle(),
                 effect_kind.clone(),
                 Ref::Symbol(self.device.clone()),
                 Ref::Symbol(self.backend.clone()),
