@@ -5,7 +5,8 @@ use std::collections::{BTreeMap, VecDeque};
 use sim_kernel::{Expr, Symbol};
 use sim_lib_stream_device::DeviceSample as StreamDeviceSample;
 use sim_lib_stream_host::{
-    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSession,
+    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, EffectReceipt, EffectRequest,
+    EffectSession, ObservationSession, OpenedSession, standard_effect_descriptor,
 };
 use sim_lib_stream_xr::{
     XrCameraFrameRef, XrMicChunkRef, XrPoseSample, XrTapSample, halo_device_symbol,
@@ -220,8 +221,8 @@ impl Default for HaloProvider {
 }
 
 impl DeviceProvider for HaloProvider {
-    fn open(&self) -> DeviceResult<Box<dyn DeviceSession>> {
-        Ok(Box::new(self.open_session()?))
+    fn open(&self) -> DeviceResult<OpenedSession> {
+        Ok(OpenedSession::Effect(Box::new(self.open_session()?)))
     }
 }
 
@@ -299,7 +300,7 @@ impl HaloSession {
     }
 }
 
-impl DeviceSession for HaloSession {
+impl ObservationSession for HaloSession {
     fn profile(&self) -> &DeviceProfile {
         &self.profile
     }
@@ -321,11 +322,20 @@ impl DeviceSession for HaloSession {
         Ok(self.samples.remove(index).map(|sample| sample.to_expr()))
     }
 
-    fn send(&mut self, command: &Expr) -> DeviceResult<()> {
+    fn stop(&mut self) -> DeviceResult<()> {
+        self.started = false;
+        Ok(())
+    }
+}
+
+impl EffectSession for HaloSession {
+    fn invoke(&mut self, request: EffectRequest) -> DeviceResult<EffectReceipt> {
+        let descriptor = standard_effect_descriptor("halo-frame");
+        descriptor.authorize(&request)?;
         self.require_started()?;
         let diff = self
             .scheduler
-            .schedule(command, &self.frame_budget)
+            .schedule(&request.payload, &self.frame_budget)
             .map_err(|error| DeviceError::Host(error.to_string()))?;
         let lua = encode_lua_cells(&diff.cells);
         if usize::try_from(diff.bytes).ok() != Some(lua.len()) {
@@ -338,12 +348,11 @@ impl DeviceSession for HaloSession {
             diff,
             lua,
         });
-        Ok(())
-    }
-
-    fn stop(&mut self) -> DeviceResult<()> {
-        self.started = false;
-        Ok(())
+        Ok(EffectReceipt {
+            kind: descriptor.receipt,
+            descriptor: descriptor.id,
+            sequence: self.sent.len() as u64,
+        })
     }
 }
 

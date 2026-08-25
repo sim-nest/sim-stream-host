@@ -56,10 +56,27 @@ claims_specimens = [
   "spec-test/sim-stream-host/src/placement_tests",
 ]
 
+[[feature]]
+id = "feature/sim-stream-host/read-first-device-sessions"
+title = "Read-first device sessions"
+summary = "Separate observation authority from registered, bounded, named device effects through reachable session types and versioned provider manifests."
+owner = "crate/sim-lib-stream-host"
+audiences = ["code", "framework"]
+guidance = "Open providers through OpenedSession. Keep observation consumers on ObservationSession; request EffectSession only for a registered descriptor and validate ProviderManifest against EffectRegistry before registration."
+claims_anchors = [
+  "anchor/crate/sim-lib-stream-host",
+  "anchor/crate/sim-lib-stream-halo",
+  "anchor/crate/sim-lib-stream-viture",
+  "anchor/crate/sim-lib-stream-wristbridge",
+]
+claims_specimens = ["spec-test/sim-stream-host/src/device_tests"]
+supports = ["feature/sim-stream-host/hardware-host-surfaces"]
+
 [[route]]
 id = "route/add-hardware-host-surface"
 task = "Add a hardware host surface"
 audiences = ["code", "framework"]
 steps = [
   { feature = "feature/sim-stream-host/hardware-host-surfaces", why = "The host row owns placement, device adapters, and hardware-facing stream surfaces." },
+  { feature = "feature/sim-stream-host/read-first-device-sessions", why = "Choose observation-only or registered effect authority before exposing the provider." },
 ]

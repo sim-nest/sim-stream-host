@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
-use sim_kernel::{CapabilitySet, Cx, DefaultFactory, EagerPolicy, Error, Expr, Symbol};
+use sim_kernel::{
+    CapabilityName, CapabilitySet, Cx, DefaultFactory, EagerPolicy, Error, Expr, Symbol,
+};
 use sim_lib_scene::{GlanceCard, GlanceMetric};
 use sim_lib_stream_device::{DeviceSample, ModeledSource};
 use sim_lib_stream_host::{
-    BoundedContentStore, DeviceError, DeviceProvider, DeviceSession, GlassesCapability,
+    BoundedContentStore, DeviceError, DeviceProvider, EffectRequest, EffectSession,
+    GlassesCapability, ObservationSession,
 };
 use sim_lib_stream_xr::{
     ModeledHaloCameraSource, ModeledHaloMicSource, ModeledHaloMotionSource, ModeledHaloTapSource,
@@ -154,7 +157,17 @@ fn scene_send_emits_budgeted_lua_diff() {
     let mut session = provider.open_session().unwrap();
     session.start().unwrap();
     let frame = glance("Ready", "info", false);
-    session.send(&frame).unwrap();
+    session
+        .invoke(EffectRequest {
+            descriptor: Symbol::qualified("device/effect", "halo-frame"),
+            payload: frame,
+            arm: Some("armed".into()),
+            idempotence_key: Some("frame-1".into()),
+            grants: vec![CapabilityName::new("device.effect.halo-frame")],
+            armed_at_ms: 1,
+            invoked_at_ms: 2,
+        })
+        .unwrap();
     let packet = &session.sent_frames()[0];
     assert_eq!(packet.route(), HaloRouteKind::Relay);
     assert!(!packet.lua().is_empty());

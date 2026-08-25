@@ -5,7 +5,8 @@ use std::collections::VecDeque;
 use sim_kernel::{Expr, Symbol};
 use sim_lib_stream_device::DeviceSample as XrDeviceSample;
 use sim_lib_stream_host::{
-    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSession,
+    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, EffectReceipt, EffectRequest,
+    EffectSession, ObservationSession, OpenedSession, standard_effect_descriptor,
 };
 use sim_lib_stream_xr::{
     XrCameraFrameRef, XrPoseSample, XrTrackingStatus, xr_camera_frame_sample_kind_symbol,
@@ -194,8 +195,8 @@ impl Default for VitureProvider {
 }
 
 impl DeviceProvider for VitureProvider {
-    fn open(&self) -> DeviceResult<Box<dyn DeviceSession>> {
-        Ok(Box::new(self.open_session()?))
+    fn open(&self) -> DeviceResult<OpenedSession> {
+        Ok(OpenedSession::Effect(Box::new(self.open_session()?)))
     }
 }
 
@@ -288,7 +289,7 @@ impl VitureSession {
     }
 }
 
-impl DeviceSession for VitureSession {
+impl ObservationSession for VitureSession {
     fn profile(&self) -> &DeviceProfile {
         &self.profile
     }
@@ -362,13 +363,6 @@ impl DeviceSession for VitureSession {
         }
     }
 
-    fn send(&mut self, command: &Expr) -> DeviceResult<()> {
-        let packet = encode_viture_command(command)?;
-        apply_control_packet(&mut self.route, &packet)?;
-        self.sent.push(packet);
-        Ok(())
-    }
-
     fn stop(&mut self) -> DeviceResult<()> {
         match &mut self.route {
             VitureSessionRoute::Carina { session, .. }
@@ -379,6 +373,21 @@ impl DeviceSession for VitureSession {
         }
         self.started = false;
         Ok(())
+    }
+}
+
+impl EffectSession for VitureSession {
+    fn invoke(&mut self, request: EffectRequest) -> DeviceResult<EffectReceipt> {
+        let descriptor = standard_effect_descriptor("viture-control");
+        descriptor.authorize(&request)?;
+        let packet = encode_viture_command(&request.payload)?;
+        apply_control_packet(&mut self.route, &packet)?;
+        self.sent.push(packet);
+        Ok(EffectReceipt {
+            kind: descriptor.receipt,
+            descriptor: descriptor.id,
+            sequence: self.sent.len() as u64,
+        })
     }
 }
 

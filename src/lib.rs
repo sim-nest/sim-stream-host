@@ -51,8 +51,11 @@ pub use config_probe::{
 };
 pub use cookbook::fake_backend_demo;
 pub use device::{
-    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSample, DeviceSession,
-    StubProvider, StubSession, device_sample_kind_symbol, poll_device_sample,
+    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSample, EffectBounds,
+    EffectDescriptor, EffectReceipt, EffectRegistry, EffectRequest, EffectSession,
+    IdempotencePolicy, ObservationCassette, ObservationSession, OpenedSession, ProviderManifest,
+    ProviderTransport, ReversalPolicy, StubProvider, StubSession, device_sample_kind_symbol,
+    poll_device_sample, standard_effect_descriptor,
 };
 pub use eval_site::{DeviceProvider as CatalogDeviceProvider, StreamEvalSite};
 pub use fake::{FakeBackend, fake_backend_symbol};

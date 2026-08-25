@@ -1,8 +1,12 @@
 use std::sync::Arc;
 
-use sim_kernel::{CapabilitySet, Cx, DefaultFactory, EagerPolicy, Error, Expr, Symbol};
+use sim_kernel::{
+    CapabilityName, CapabilitySet, Cx, DefaultFactory, EagerPolicy, Error, Expr, Symbol,
+};
 use sim_lib_stream_device::DeviceSample as XrDeviceSample;
-use sim_lib_stream_host::{DeviceError, DeviceProvider, DeviceSession};
+use sim_lib_stream_host::{
+    DeviceError, DeviceProvider, EffectRequest, EffectSession, ObservationSession,
+};
 use sim_lib_stream_xr::{XrCameraFrameRef, XrPoseSample, XrTrackingStatus};
 use sim_lib_view_device::{ConsentReceipt, EdgeId};
 use sim_value::build;
@@ -198,16 +202,32 @@ fn scripted_session_records_display_commands_without_hardware() {
         .unwrap();
 
     session
-        .send(&command(
-            VitureCommandKind::Display3d,
-            vec![("enabled", Expr::Bool(false))],
-        ))
+        .invoke(EffectRequest {
+            descriptor: Symbol::qualified("device/effect", "viture-control"),
+            payload: command(
+                VitureCommandKind::Display3d,
+                vec![("enabled", Expr::Bool(false))],
+            ),
+            arm: Some("armed".into()),
+            idempotence_key: Some("one".into()),
+            grants: vec![CapabilityName::new("device.effect.viture-control")],
+            armed_at_ms: 1,
+            invoked_at_ms: 2,
+        })
         .unwrap();
     session
-        .send(&command(
-            VitureCommandKind::Brightness,
-            vec![("level", build::uint(40))],
-        ))
+        .invoke(EffectRequest {
+            descriptor: Symbol::qualified("device/effect", "viture-control"),
+            payload: command(
+                VitureCommandKind::Brightness,
+                vec![("level", build::uint(40))],
+            ),
+            arm: Some("armed".into()),
+            idempotence_key: Some("two".into()),
+            grants: vec![CapabilityName::new("device.effect.viture-control")],
+            armed_at_ms: 1,
+            invoked_at_ms: 2,
+        })
         .unwrap();
 
     assert_eq!(

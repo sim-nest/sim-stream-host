@@ -1,5 +1,21 @@
-use sim_kernel::Expr;
-use sim_lib_stream_host::{DeviceError, DeviceProvider, DeviceSample, DeviceSession};
+use sim_kernel::{CapabilityName, Expr, Symbol};
+use sim_lib_stream_host::{
+    DeviceError, DeviceProvider, DeviceSample, EffectRequest, EffectSession, ObservationSession,
+};
+
+fn invoke(session: &mut dyn EffectSession, payload: Expr) {
+    session
+        .invoke(EffectRequest {
+            descriptor: Symbol::qualified("device/effect", "watch-command"),
+            payload,
+            arm: Some("armed".into()),
+            idempotence_key: Some("test".into()),
+            grants: vec![CapabilityName::new("device.effect.watch-command")],
+            armed_at_ms: 1,
+            invoked_at_ms: 2,
+        })
+        .unwrap();
+}
 use sim_value::{access, build};
 
 use crate::ble::BlueZLink;
@@ -79,7 +95,7 @@ fn watch_command_serializes_for_relay_and_mini_program_bridge() {
         .with_bringup_ledger(verified(BRINGUP_TEST_PROOF, BringupRoute::Relay))
         .open_session()
         .unwrap();
-    relay_session.send(&command).unwrap();
+    invoke(&mut relay_session, command);
     assert_eq!(
         relay_session.sent_commands()[0].route(),
         WatchRouteKind::Relay
@@ -89,7 +105,7 @@ fn watch_command_serializes_for_relay_and_mini_program_bridge() {
         .with_bringup_ledger(verified(BRINGUP_TEST_PROOF, BringupRoute::Zepp))
         .open_session()
         .unwrap();
-    zepp_session.send(&privacy_command()).unwrap();
+    invoke(&mut zepp_session, privacy_command());
     assert_eq!(
         zepp_session.sent_commands()[0].command(),
         WatchCommandKind::PrivacyMode
@@ -109,13 +125,13 @@ fn ble_and_import_sessions_accept_watch_commands() {
     .open_session()
     .unwrap();
 
-    ble_session.send(&command).unwrap();
+    invoke(&mut ble_session, command.clone());
     assert_eq!(ble_session.sent_commands()[0].route(), WatchRouteKind::Ble);
 
     let mut import_session = WatchProvider::import(ImportSource::csv("heart-rate,73"))
         .open_session()
         .unwrap();
-    import_session.send(&command).unwrap();
+    invoke(&mut import_session, command);
     assert_eq!(
         import_session.sent_commands()[0].route(),
         WatchRouteKind::Import
