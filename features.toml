@@ -62,7 +62,7 @@ title = "Read-first device sessions"
 summary = "Separate observation authority from registered, bounded, named device effects through reachable session types and versioned provider manifests."
 owner = "crate/sim-lib-stream-host"
 audiences = ["code", "framework"]
-guidance = "Open providers through OpenedSession. Keep observation consumers on ObservationSession; request EffectSession only for a registered descriptor and validate ProviderManifest against EffectRegistry before registration."
+guidance = "Open providers through OpenedSession. Keep observation consumers on ObservationSession; request EffectSession only for a registered descriptor and validate ProviderManifest against EffectRegistry before registration. Compose apparatus diversity from the generic revision-4 catalog and synthetic cassettes under provider-packs/; keep physical selection and identity private."
 claims_anchors = [
   "anchor/crate/sim-lib-stream-host",
   "anchor/crate/sim-lib-stream-halo",
