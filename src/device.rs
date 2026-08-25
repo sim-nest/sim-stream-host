@@ -461,6 +461,87 @@ pub struct EffectReceipt {
     pub sequence: u64,
 }
 
+/// Deterministic effect session used to prove registered adapters without hardware.
+pub struct FakeEffectSession {
+    profile: DeviceProfile,
+    registry: EffectRegistry,
+    receipts: BTreeMap<String, EffectReceipt>,
+    invocations: BTreeMap<Symbol, u64>,
+    stopped: bool,
+    sequence: u64,
+}
+
+impl FakeEffectSession {
+    /// Builds a fake session from individually reviewed descriptors.
+    pub fn new(profile: DeviceProfile, registry: EffectRegistry) -> Self {
+        Self {
+            profile,
+            registry,
+            receipts: BTreeMap::new(),
+            invocations: BTreeMap::new(),
+            stopped: false,
+            sequence: 0,
+        }
+    }
+}
+
+impl ObservationSession for FakeEffectSession {
+    fn profile(&self) -> &DeviceProfile {
+        &self.profile
+    }
+    fn start(&mut self) -> DeviceResult<()> {
+        self.stopped = false;
+        Ok(())
+    }
+    fn poll(&mut self, _kind: &str) -> DeviceResult<Option<Expr>> {
+        Ok(None)
+    }
+    fn stop(&mut self) -> DeviceResult<()> {
+        self.stopped = true;
+        Ok(())
+    }
+}
+
+impl EffectSession for FakeEffectSession {
+    fn invoke(&mut self, request: EffectRequest) -> DeviceResult<EffectReceipt> {
+        if self.stopped {
+            return Err(DeviceError::Host(
+                "effect session is locally stopped".into(),
+            ));
+        }
+        let descriptor = self
+            .registry
+            .get(&request.descriptor)
+            .ok_or_else(|| DeviceError::Contract("effect is not registered".into()))?;
+        descriptor.authorize(&request)?;
+        let count = self
+            .invocations
+            .entry(request.descriptor.clone())
+            .or_default();
+        if *count >= descriptor.bounds.max_invocations {
+            return Err(DeviceError::Contract(
+                "effect invocation bound exhausted".into(),
+            ));
+        }
+        if let Some(key) = request.idempotence_key.as_ref() {
+            if let Some(receipt) = self.receipts.get(key) {
+                return Ok(receipt.clone());
+            }
+        }
+        *count += 1;
+        self.sequence += 1;
+        let receipt = EffectReceipt {
+            kind: descriptor.receipt.clone(),
+            descriptor: descriptor.id.clone(),
+            sequence: self.sequence,
+        };
+        if let Some(key) = request.idempotence_key {
+            self.receipts.insert(key, receipt.clone());
+        }
+        Ok(receipt)
+    }
+}
+
 /// Polls and decodes a typed device sample from a session.
 pub fn poll_device_sample<S>(session: &mut dyn ObservationSession) -> DeviceResult<Option<S>>
 where

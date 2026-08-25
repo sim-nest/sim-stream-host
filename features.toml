@@ -72,6 +72,17 @@ claims_anchors = [
 claims_specimens = ["spec-test/sim-stream-host/src/device_tests"]
 supports = ["feature/sim-stream-host/hardware-host-surfaces"]
 
+[[feature]]
+id = "feature/sim-stream-host/named-music-effects"
+title = "Named, bounded music effects"
+summary = "Admit only reviewed MIDI send, audio route open/close, and emergency-stop adapters with explicit authority descriptors and deterministic fake-provider proof."
+owner = "crate/sim-lib-stream-host"
+audiences = ["code", "framework"]
+guidance = "Compose MusicEffect descriptors through music_effect_registry; never translate arbitrary strings into provider commands. Use FakeEffectSession to prove expiry, idempotence, bounds, reversal, and local stop without hardware."
+claims_anchors = ["anchor/crate/sim-lib-stream-host"]
+claims_specimens = ["spec-test/sim-stream-host/tests/device_authority"]
+supports = ["feature/sim-stream-host/read-first-device-sessions"]
+
 [[route]]
 id = "route/add-hardware-host-surface"
 task = "Add a hardware host surface"

@@ -3,8 +3,9 @@ use std::time::Duration;
 use sim_kernel::{CapabilityName, Expr, Symbol};
 use sim_lib_stream_host::{
     DeviceError, DeviceProfile, DeviceProvider, EffectBounds, EffectDescriptor, EffectRegistry,
-    EffectRequest, IdempotencePolicy, ObservationCassette, ProviderManifest, ProviderTransport,
-    ReversalPolicy,
+    EffectRequest, EffectSession, FakeEffectSession, IdempotencePolicy, MusicEffect,
+    ObservationCassette, ObservationSession, ProviderManifest, ProviderTransport, ReversalPolicy,
+    music_effect_registry,
 };
 
 fn descriptor() -> EffectDescriptor {
@@ -23,6 +24,70 @@ fn descriptor() -> EffectDescriptor {
         reversal: ReversalPolicy::Irreversible,
         local_stop: Symbol::qualified("device/effect", "stop"),
     }
+}
+
+fn music_request(
+    effect: MusicEffect,
+    key: &str,
+    armed_at_ms: u64,
+    invoked_at_ms: u64,
+) -> EffectRequest {
+    let descriptor = effect.descriptor();
+    EffectRequest {
+        descriptor: descriptor.id,
+        payload: Expr::Bool(true),
+        arm: Some("operator-arm".into()),
+        idempotence_key: Some(key.into()),
+        grants: vec![descriptor.capability],
+        armed_at_ms,
+        invoked_at_ms,
+    }
+}
+
+#[test]
+fn named_music_effects_deduplicate_expire_reverse_and_stop_locally() {
+    let registry = music_effect_registry().unwrap();
+    assert!(
+        registry
+            .get(&Symbol::qualified("device/effect", "camera-ptz"))
+            .is_none()
+    );
+    assert!(
+        registry
+            .get(&Symbol::qualified("device/effect", "printer-start"))
+            .is_none()
+    );
+    let mut fake = FakeEffectSession::new(DeviceProfile::modeled_edge(), registry);
+    let first = fake
+        .invoke(music_request(
+            MusicEffect::AudioRouteOpen,
+            "route-1",
+            10,
+            11,
+        ))
+        .unwrap();
+    let duplicate = fake
+        .invoke(music_request(
+            MusicEffect::AudioRouteOpen,
+            "route-1",
+            10,
+            12,
+        ))
+        .unwrap();
+    assert_eq!(first, duplicate);
+    assert!(
+        fake.invoke(music_request(MusicEffect::MidiSend, "expired", 0, 6_000))
+            .is_err()
+    );
+    assert!(matches!(
+        MusicEffect::AudioRouteOpen.descriptor().reversal,
+        ReversalPolicy::Effect(_)
+    ));
+    fake.stop().unwrap();
+    assert!(
+        fake.invoke(music_request(MusicEffect::EmergencyStop, "stop", 20, 21))
+            .is_err()
+    );
 }
 
 #[test]
