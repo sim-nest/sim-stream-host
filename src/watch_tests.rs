@@ -33,7 +33,11 @@ fn watch_provider_gate_requires_capability_visible_grant_and_session() {
         watch_location_grant(),
         watch_mic_grant(),
     ];
-    let cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x2661_01aa_fb65_6a19),
+    );
     for event in [&health, &location, &mic] {
         assert!(matches!(
             require_watch_worn_ingest(&cx, event, &grants, &session, &session),
@@ -41,7 +45,11 @@ fn watch_provider_gate_requires_capability_visible_grant_and_session() {
         ));
     }
 
-    let mut cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let mut cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0xd956_a376_d914_346a),
+    );
     cx.grant(WatchCapability::Health.capability_name());
     assert!(matches!(
         require_watch_worn_ingest(&cx, &health, &[], &session, &session),

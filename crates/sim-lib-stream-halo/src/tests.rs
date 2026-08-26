@@ -188,14 +188,22 @@ fn camera_pull_is_one_shot_consent_gated_and_by_reference() {
     let pull =
         HaloCameraPull::new(17, frame_key.clone(), 123, Expr::Bytes(vec![1, 2, 3, 4]), 4).unwrap();
     let mut store = BoundedContentStore::new(32).unwrap();
-    let cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x8faf_e7a9_fd4e_99cc),
+    );
     assert!(matches!(
         pull_halo_camera_once(&cx, &mut store, &receipt, &session, pull.clone(), 0),
         Err(Error::CapabilityDenied { .. })
     ));
 
     let granted = CapabilitySet::new().grant(GlassesCapability::Camera.capability_name());
-    let mut cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let mut cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0xfffb_5120_b5ee_91a2),
+    );
     cx.with_capabilities(granted, |cx| {
         let (frame, evicted) = pull_halo_camera_once(cx, &mut store, &receipt, &session, pull, 0)?;
         assert!(evicted.is_empty());

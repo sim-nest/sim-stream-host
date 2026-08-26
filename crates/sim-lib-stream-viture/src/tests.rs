@@ -91,7 +91,11 @@ fn camera_frame_store_is_consent_gated_and_by_reference() {
     );
     let frame = camera_frame(7, 8);
     let mut store = sim_lib_stream_host::BoundedContentStore::new(64).unwrap();
-    let cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x0463_e276_bcbc_0947),
+    );
 
     assert!(matches!(
         store_viture_camera_frame(&cx, &mut store, &receipt, &session, frame.clone(), 0),
@@ -100,7 +104,11 @@ fn camera_frame_store_is_consent_gated_and_by_reference() {
 
     let granted = CapabilitySet::new()
         .grant(sim_lib_stream_host::GlassesCapability::Camera.capability_name());
-    let mut cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let mut cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x2727_6ccd_5444_b6bd),
+    );
     cx.with_capabilities(granted, |cx| {
         assert!(matches!(
             store_viture_camera_frame(cx, &mut store, &receipt, &other_session, frame.clone(), 0),
@@ -131,7 +139,11 @@ fn camera_frame_reaper_evicts_expired_ref() {
     let mut store = sim_lib_stream_host::BoundedContentStore::new(64).unwrap();
     let granted = CapabilitySet::new()
         .grant(sim_lib_stream_host::GlassesCapability::Camera.capability_name());
-    let mut cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let mut cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x19bc_3713_4be3_907a),
+    );
 
     cx.with_capabilities(granted, |cx| {
         store_viture_camera_frame(cx, &mut store, &receipt, &session, frame, 0)?;

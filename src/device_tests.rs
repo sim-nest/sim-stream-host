@@ -204,3 +204,4 @@ fn content_store_obeys_size_bound_and_retention_reaper() {
     assert!(evicted.iter().all(|item| item.reason == retention_reason()));
     assert!(store.is_empty());
 }
+// conformance: device tests prove stream placement, capability, and lifecycle behavior.

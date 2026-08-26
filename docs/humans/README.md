@@ -18,7 +18,9 @@ This generated lane consumes `docs/generated/sim-index-fragment.sx`. Global inde
 | Feature | Subject | Specimens | Summary |
 | --- | --- | ---: | --- |
 | `feature/sim-stream-host/generated-docs` | `crate/xtask` | 0 | Publish generated package, card, rustdoc, and index facts for stream host and hardware bridge crates. |
-| `feature/sim-stream-host/hardware-host-surfaces` | `crate/sim-lib-stream-host` | 1 | Collect stream-host placement, Viture glasses, Halo glasses, watch bridge, and native FFI adapters as one hardware-facing code feature. |
+| `feature/sim-stream-host/hardware-host-surfaces` | `crate/sim-lib-stream-host` | 1 | Collect shared stream placement, Viture glasses semantics, Halo glasses semantics, and watch bridges above capsule-owned physical ports. |
+| `feature/sim-stream-host/read-first-device-sessions` | `crate/sim-lib-stream-host` | 1 | Separate observation authority from registered, bounded, named device effects through reachable session types and versioned provider manifests. |
+| `feature/sim-stream-host/named-music-effects` | `crate/sim-lib-stream-host` | 1 | Admit only reviewed MIDI send, audio route open/close, and emergency-stop adapters with explicit authority descriptors and deterministic fake-provider proof. |
 
 ## Surfaces
 
@@ -259,8 +261,375 @@ fn authorized_cx() -> Cx {
     let mut cx = Cx::new(
         std::sync::Arc::new(EagerPolicy),
         std::sync::Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x5354_484f),
     );
     cx.grant(stream_host_capability());
     cx
 }
+```
+
+### `feature/sim-stream-host/read-first-device-sessions`
+
+Specimen `spec-test/sim-stream-host/src/device_tests` is checked by `cargo test`.
+
+Source `src/device_tests.rs`:
+
+```rust
+use std::time::Duration;
+
+use sim_kernel::{CapabilityName, Expr, Symbol};
+
+use crate::{
+    BoundedContentStore, ContentFrame, DeviceCapability, DeviceError, DevicePlacement,
+    DeviceProvider, DeviceSite, EffectBounds, EffectDescriptor, EffectRegistry, EffectRequest,
+    IdempotencePolicy, ObservationCassette, ObservationSession, PlacementError, ProviderManifest,
+    ProviderTransport, RetentionWindow, ReversalPolicy, StoreKey, StubProvider, retention_reason,
+    size_bound_reason,
+};
+
+#[test]
+fn device_stub_unsupported_and_placement_guard() {
+    let profile = crate::DeviceProfile::modeled_edge();
+    let provider = StubProvider::new(profile.clone());
+    assert_eq!(provider.profile(), &profile);
+    assert!(matches!(provider.open(), Err(DeviceError::Unsupported)));
+
+    let mut session = provider.session();
+    assert_eq!(session.profile(), provider.profile());
+    assert!(matches!(session.start(), Err(DeviceError::Unsupported)));
+    assert!(matches!(
+        session.poll("device-caps"),
+        Err(DeviceError::Unsupported)
+    ));
+    session.stop().unwrap();
+
+    let codec = Symbol::qualified("codec", "lisp");
+    let encoder = DeviceSite::edge_local(
+        Symbol::qualified("device/site", "encoder"),
+        provider.profile().clone(),
+        codec.clone(),
+    );
+    let adapter = DeviceSite::remote(
+        Symbol::qualified("device/site", "adapter"),
+        provider.profile().clone(),
+        codec,
+    );
+    let placement = DevicePlacement::new(encoder, adapter);
+
+    assert_eq!(
+        placement.validate(),
+        Err(PlacementError::AdapterMustBeEdgeLocal)
+    );
+}
+
+fn descriptor(id: &str) -> EffectDescriptor {
+    EffectDescriptor {
+        id: Symbol::qualified("device/effect", id),
+        shape: Symbol::qualified("shape/device-effect", id),
+        capability: CapabilityName::new(format!("device.effect.{id}")),
+        bounds: EffectBounds {
+            max_request_bytes: 1024,
+            max_invocations: 8,
+        },
+        requires_arm: true,
+        expires_after: Duration::from_secs(5),
+        receipt: Symbol::qualified("device/receipt", id),
+        idempotence: IdempotencePolicy::Keyed,
+        reversal: ReversalPolicy::Irreversible,
+        local_stop: Symbol::qualified("device/effect", "stop"),
+    }
+}
+
+fn manifest(effects: Vec<Symbol>) -> ProviderManifest {
+    ProviderManifest {
+        version: 1,
+        id: Symbol::qualified("device/provider", "fixture"),
+        transport: ProviderTransport::Cassette,
+        profile: "sha256:profile".to_owned(),
+        observations: vec![Symbol::qualified("device/sample", "fixture")],
+        effects,
+        consent: vec![],
+        stale_after: Duration::from_secs(30),
+        cassette: "sha256:cassette".to_owned(),
+        fallback: Symbol::qualified("device/provider", "fixture-read-only"),
+    }
+}
+
+#[test]
+fn manifest_requires_registered_complete_effects_and_hygienic_bounds() {
+    let effect = descriptor("fixture");
+    let registry = EffectRegistry::new([effect.clone()]).unwrap();
+    manifest(vec![effect.id.clone()])
+        .validate(&registry)
+        .unwrap();
+
+    assert!(matches!(
+        manifest(vec![Symbol::qualified("device/effect", "forged")]).validate(&registry),
+        Err(DeviceError::Contract(_))
+    ));
+    let mut stale = manifest(vec![]);
+    stale.stale_after = Duration::ZERO;
+    assert!(matches!(
+        stale.validate(&registry),
+        Err(DeviceError::Contract(_))
+    ));
+    let mut secret = manifest(vec![]);
+    secret.cassette = "token=do-not-store".to_owned();
+    assert!(matches!(
+        secret.validate(&registry),
+        Err(DeviceError::Contract(_))
+    ));
+    let mut incomplete = descriptor("incomplete");
+    incomplete.bounds.max_invocations = 0;
+    assert!(matches!(
+        EffectRegistry::new([incomplete]),
+        Err(DeviceError::Contract(_))
+    ));
+
+    let mut forged = EffectRequest {
+        descriptor: effect.id.clone(),
+        payload: Expr::Bool(true),
+        arm: Some("armed".to_owned()),
+        idempotence_key: Some("fixture-1".to_owned()),
+        grants: vec![],
+        armed_at_ms: 1,
+        invoked_at_ms: 2,
+    };
+    assert!(matches!(
+        effect.authorize(&forged),
+        Err(DeviceError::Contract(_))
+    ));
+    forged.grants.push(effect.capability.clone());
+    forged.invoked_at_ms = 10_000;
+    assert!(matches!(
+        effect.authorize(&forged),
+        Err(DeviceError::Contract(_))
+    ));
+}
+
+#[test]
+fn observation_cassette_has_no_runtime_effect_lookup() {
+    let cassette =
+        ObservationCassette::new(crate::DeviceProfile::modeled_edge(), vec![Expr::Bool(true)]);
+    let mut opened = cassette.open().unwrap();
+    assert!(opened.effect().is_none());
+    assert_eq!(
+        opened.observation().poll("device-caps").unwrap(),
+        Some(Expr::Bool(true))
+    );
+}
+
+#[test]
+fn content_store_obeys_size_bound_and_retention_reaper() {
+    assert_eq!(
+        DeviceCapability::Pose.capability_name().as_str(),
+        "device/pose"
+    );
+    assert_eq!(
+        DeviceCapability::Pose.grant_symbol(),
+        Symbol::qualified("device", "pose")
+    );
+
+    let session = Symbol::qualified("device/session", "primary");
+    let key_a = StoreKey::named("a");
+    let key_b = StoreKey::named("b");
+    let key_c = StoreKey::named("c");
+    let mut store = BoundedContentStore::new(6).unwrap();
+
+    let evicted = store
+        .insert(ContentFrame::new(
+            key_a.clone(),
+            session.clone(),
+            1,
+            0,
+            4,
+            Expr::String("first".to_owned()),
+        ))
+        .unwrap();
+    assert!(evicted.is_empty());
+
+    let evicted = store
+        .insert(ContentFrame::new(
+            key_b.clone(),
+            session.clone(),
+            1,
+            0,
+            4,
+            Expr::String("second".to_owned()),
+        ))
+        .unwrap();
+    assert_eq!(evicted.len(), 1);
+    assert_eq!(evicted[0].key, key_a);
+    assert_eq!(evicted[0].reason, size_bound_reason());
+    assert!(!store.contains(&key_a));
+    assert!(store.contains(&key_b));
+
+    store
+        .insert(ContentFrame::new(
+            key_c.clone(),
+            session.clone(),
+            2,
+            0,
+            2,
+            Expr::String("third".to_owned()),
+        ))
+        .unwrap();
+    let evicted = store.sweep_retention(2, 1, &[RetentionWindow::new(session.clone(), 1, 1_000)]);
+    assert_eq!(evicted.len(), 2);
+    assert!(evicted.iter().any(|item| item.key == key_b));
+    assert!(evicted.iter().any(|item| item.key == key_c));
+    assert!(evicted.iter().all(|item| item.reason == retention_reason()));
+    assert!(store.is_empty());
+}
+// conformance: device tests prove stream placement, capability, and lifecycle behavior.
+```
+
+### `feature/sim-stream-host/named-music-effects`
+
+Specimen `spec-test/sim-stream-host/tests/device_authority` is checked by `cargo test`.
+
+Source `tests/device_authority.rs`:
+
+```rust
+use std::time::Duration;
+
+use sim_kernel::{CapabilityName, Expr, Symbol};
+use sim_lib_stream_host::{
+    DeviceError, DeviceProfile, DeviceProvider, EffectBounds, EffectDescriptor, EffectRegistry,
+    EffectRequest, EffectSession, FakeEffectSession, IdempotencePolicy, MusicEffect,
+    ObservationCassette, ObservationSession, ProviderManifest, ProviderTransport, ReversalPolicy,
+    music_effect_registry,
+};
+
+fn descriptor() -> EffectDescriptor {
+    EffectDescriptor {
+        id: Symbol::qualified("device/effect", "fixture"),
+        shape: Symbol::qualified("shape/device-effect", "fixture"),
+        capability: CapabilityName::new("device.effect.fixture"),
+        bounds: EffectBounds {
+            max_request_bytes: 64,
+            max_invocations: 1,
+        },
+        requires_arm: true,
+        expires_after: Duration::from_millis(10),
+        receipt: Symbol::qualified("device/receipt", "fixture"),
+        idempotence: IdempotencePolicy::Keyed,
+        reversal: ReversalPolicy::Irreversible,
+        local_stop: Symbol::qualified("device/effect", "stop"),
+    }
+}
+
+fn music_request(
+    effect: MusicEffect,
+    key: &str,
+    armed_at_ms: u64,
+    invoked_at_ms: u64,
+) -> EffectRequest {
+    let descriptor = effect.descriptor();
+    EffectRequest {
+        descriptor: descriptor.id,
+        payload: Expr::Bool(true),
+        arm: Some("operator-arm".into()),
+        idempotence_key: Some(key.into()),
+        grants: vec![descriptor.capability],
+        armed_at_ms,
+        invoked_at_ms,
+    }
+}
+
+#[test]
+fn named_music_effects_deduplicate_expire_reverse_and_stop_locally() {
+    let registry = music_effect_registry().unwrap();
+    assert!(
+        registry
+            .get(&Symbol::qualified("device/effect", "camera-ptz"))
+            .is_none()
+    );
+    assert!(
+        registry
+            .get(&Symbol::qualified("device/effect", "printer-start"))
+            .is_none()
+    );
+    let mut fake = FakeEffectSession::new(DeviceProfile::modeled_edge(), registry);
+    let first = fake
+        .invoke(music_request(
+            MusicEffect::AudioRouteOpen,
+            "route-1",
+            10,
+            11,
+        ))
+        .unwrap();
+    let duplicate = fake
+        .invoke(music_request(
+            MusicEffect::AudioRouteOpen,
+            "route-1",
+            10,
+            12,
+        ))
+        .unwrap();
+    assert_eq!(first, duplicate);
+    assert!(
+        fake.invoke(music_request(MusicEffect::MidiSend, "expired", 0, 6_000))
+            .is_err()
+    );
+    assert!(matches!(
+        MusicEffect::AudioRouteOpen.descriptor().reversal,
+        ReversalPolicy::Effect(_)
+    ));
+    fake.stop().unwrap();
+    assert!(
+        fake.invoke(music_request(MusicEffect::EmergencyStop, "stop", 20, 21))
+            .is_err()
+    );
+}
+
+#[test]
+fn hostile_generic_caller_cannot_escalate_observation_cassette() {
+    let provider = ObservationCassette::new(DeviceProfile::modeled_edge(), vec![Expr::Bool(true)]);
+    let mut opened = provider.open().unwrap();
+    assert!(opened.effect().is_none());
+    assert_eq!(
+        opened.observation().poll("fixture").unwrap(),
+        Some(Expr::Bool(true))
+    );
+}
+
+#[test]
+fn manifest_and_descriptor_fail_closed() {
+    let descriptor = descriptor();
+    let registry = EffectRegistry::new([descriptor.clone()]).unwrap();
+    let mut manifest = ProviderManifest {
+        version: 1,
+        id: Symbol::qualified("device/provider", "fixture"),
+        transport: ProviderTransport::Cassette,
+        profile: "sha256:profile".into(),
+        observations: vec![],
+        effects: vec![descriptor.id.clone()],
+        consent: vec![],
+        stale_after: Duration::from_secs(1),
+        cassette: "sha256:cassette".into(),
+        fallback: Symbol::qualified("device/provider", "read-only"),
+    };
+    manifest.validate(&registry).unwrap();
+    manifest.effects = vec![Symbol::qualified("device/effect", "forged")];
+    assert!(matches!(
+        manifest.validate(&registry),
+        Err(DeviceError::Contract(_))
+    ));
+
+    let request = EffectRequest {
+        descriptor: descriptor.id.clone(),
+        payload: Expr::Bool(true),
+        arm: Some("armed".into()),
+        idempotence_key: Some("one".into()),
+        grants: vec![descriptor.capability.clone()],
+        armed_at_ms: 1,
+        invoked_at_ms: 100,
+    };
+    assert!(matches!(
+        descriptor.authorize(&request),
+        Err(DeviceError::Contract(_))
+    ));
+}
+// conformance: device-authority tests prove explicit grants and fail-closed host access.
 ```

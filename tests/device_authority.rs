@@ -138,3 +138,4 @@ fn manifest_and_descriptor_fail_closed() {
         Err(DeviceError::Contract(_))
     ));
 }
+// conformance: device-authority tests prove explicit grants and fail-closed host access.

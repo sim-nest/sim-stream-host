@@ -212,6 +212,7 @@ fn authorized_cx() -> Cx {
     let mut cx = Cx::new(
         std::sync::Arc::new(EagerPolicy),
         std::sync::Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x5354_484f),
     );
     cx.grant(stream_host_capability());
     cx

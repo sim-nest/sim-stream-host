@@ -523,10 +523,10 @@ impl EffectSession for FakeEffectSession {
                 "effect invocation bound exhausted".into(),
             ));
         }
-        if let Some(key) = request.idempotence_key.as_ref() {
-            if let Some(receipt) = self.receipts.get(key) {
-                return Ok(receipt.clone());
-            }
+        if let Some(key) = request.idempotence_key.as_ref()
+            && let Some(receipt) = self.receipts.get(key)
+        {
+            return Ok(receipt.clone());
         }
         *count += 1;
         self.sequence += 1;

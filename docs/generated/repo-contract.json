@@ -33,13 +33,12 @@
       "sim-lib-stream-host",
       "sim-lib-stream-viture",
       "sim-lib-stream-wristbridge",
-      "sim-viture-ffi",
       "xtask"
     ]
   },
   "non_citizen_exemption_count": 0,
   "non_citizen_exemptions": [],
-  "package_count": 6,
+  "package_count": 5,
   "packages": [
     {
       "crate_name": "sim_lib_stream_halo",
@@ -111,7 +110,8 @@
       "root": "",
       "rustdoc_summary": "Host-device stream backend substrate.",
       "target_kinds": [
-        "lib"
+        "lib",
+        "test"
       ],
       "targets": [
         {
@@ -123,6 +123,16 @@
           ],
           "name": "sim_lib_stream_host",
           "src": "src/lib.rs"
+        },
+        {
+          "crate_types": [
+            "bin"
+          ],
+          "kind": [
+            "test"
+          ],
+          "name": "device_authority",
+          "src": "tests/device_authority.rs"
         }
       ]
     },
@@ -133,13 +143,6 @@
           "kind": "normal",
           "optional": false,
           "package": "sim-lib-stream-host",
-          "rename": null,
-          "target": null
-        },
-        {
-          "kind": "normal",
-          "optional": false,
-          "package": "sim-viture-ffi",
           "rename": null,
           "target": null
         }
@@ -204,33 +207,6 @@
       ]
     },
     {
-      "crate_name": "sim_viture_ffi",
-      "dependencies": [],
-      "description": "Unsafe-isolated dynamic loader for VITURE glasses SDK entry points.",
-      "features": [],
-      "group": "workspace",
-      "manifest": "crates/sim-viture-ffi/Cargo.toml",
-      "name": "sim-viture-ffi",
-      "publish": "true",
-      "root": "crates/sim-viture-ffi",
-      "rustdoc_summary": "Unsafe-isolated dynamic loader for VITURE glasses SDK entry points.",
-      "target_kinds": [
-        "lib"
-      ],
-      "targets": [
-        {
-          "crate_types": [
-            "lib"
-          ],
-          "kind": [
-            "lib"
-          ],
-          "name": "sim_viture_ffi",
-          "src": "crates/sim-viture-ffi/src/lib.rs"
-        }
-      ]
-    },
-    {
       "crate_name": "xtask",
       "dependencies": [],
       "description": "SIM workspace package for xtask.",
@@ -263,10 +239,10 @@
     "generated_by": "cargo run -p xtask -- simdoc",
     "generation_timestamp": "2026-07-15T00:40:48+02:00",
     "generator": "xtask repo-contract v1",
-    "git_commit": "c7b5336f5a74649a380d777f82a022f18f8a6178",
+    "git_commit": "9bf532e75b1eefb48b8c97f02aeb686dd7ed221c",
     "repo": "sim-stream-host",
     "schema": "sim.provenance.v1",
-    "source_commit": "c7b5336f5a74649a380d777f82a022f18f8a6178",
+    "source_commit": "9bf532e75b1eefb48b8c97f02aeb686dd7ed221c",
     "source_remote": "https://github.com/sim-nest/sim-stream-host",
     "validation_commands": [
       "cargo fmt --all --check",
@@ -279,9 +255,9 @@
       "cargo run -p xtask -- validation-matrix --check --repo .",
       "cargo run -p xtask -- crate-catalog --check --repo ."
     ],
-    "workspace_hash": "79bb6e9ed7a887c4",
+    "workspace_hash": "11518567d2036433",
     "workspace_hash_algorithm": "fnv1a64",
-    "workspace_hash_input_count": 90,
+    "workspace_hash_input_count": 84,
     "workspace_hash_inputs": [
       "Cargo.toml",
       "crates/sim-lib-stream-halo/Cargo.toml",
@@ -315,13 +291,6 @@
       "crates/sim-lib-stream-wristbridge/src/stub.rs",
       "crates/sim-lib-stream-wristbridge/src/tests.rs",
       "crates/sim-lib-stream-wristbridge/src/zepp.rs",
-      "crates/sim-viture-ffi/Cargo.toml",
-      "crates/sim-viture-ffi/src/carina.rs",
-      "crates/sim-viture-ffi/src/dynload.rs",
-      "crates/sim-viture-ffi/src/legacy.rs",
-      "crates/sim-viture-ffi/src/lib.rs",
-      "crates/sim-viture-ffi/src/stub.rs",
-      "crates/sim-viture-ffi/src/tests.rs",
       "features.toml",
       "recipes/01-basics/fake-backend/recipe.toml",
       "recipes/book.toml",
@@ -348,6 +317,7 @@
       "src/midi_live_eval_site.rs",
       "src/midi_provider.rs",
       "src/model.rs",
+      "src/music_effects.rs",
       "src/placement/audio.rs",
       "src/placement/device.rs",
       "src/placement/lan.rs",

@@ -10,7 +10,11 @@ use crate::{
 };
 
 pub(super) fn test_cx() -> Cx {
-    Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory))
+    Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x04b7_6386_1ace_5a66),
+    )
 }
 
 pub(super) fn authorized_cx() -> Cx {
