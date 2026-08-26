@@ -8,5 +8,4 @@
 | `sim-lib-stream-host` | `workspace` | Host-device stream backend substrate. |
 | `sim-lib-stream-viture` | `workspace` | Local VITURE glasses provider for SIM XR stream samples. |
 | `sim-lib-stream-wristbridge` | `workspace` | Local watch provider routes for SIM worn streams. |
-| `sim-viture-ffi` | `workspace` | Unsafe-isolated dynamic loader for VITURE glasses SDK entry points. |
 | `xtask` | `workspace` | Repository maintenance tasks for sim-stream-host. |
