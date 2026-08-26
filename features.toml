@@ -63,12 +63,6 @@ summary = "Separate observation authority from registered, bounded, named device
 owner = "crate/sim-lib-stream-host"
 audiences = ["code", "framework"]
 guidance = "Open providers through OpenedSession. Keep observation consumers on ObservationSession; request EffectSession only for a registered descriptor and validate ProviderManifest against EffectRegistry before registration. Compose apparatus diversity from the generic revision-4 catalog and synthetic cassettes under provider-packs/; keep physical selection and identity private."
-claims_anchors = [
-  "anchor/crate/sim-lib-stream-host",
-  "anchor/crate/sim-lib-stream-halo",
-  "anchor/crate/sim-lib-stream-viture",
-  "anchor/crate/sim-lib-stream-wristbridge",
-]
 claims_specimens = ["spec-test/sim-stream-host/src/device_tests"]
 supports = ["feature/sim-stream-host/hardware-host-surfaces"]
 
@@ -79,7 +73,10 @@ summary = "Admit only reviewed MIDI send, audio route open/close, and emergency-
 owner = "crate/sim-lib-stream-host"
 audiences = ["code", "framework"]
 guidance = "Compose MusicEffect descriptors through music_effect_registry; never translate arbitrary strings into provider commands. Use FakeEffectSession to prove expiry, idempotence, bounds, reversal, and local stop without hardware."
-claims_anchors = ["anchor/crate/sim-lib-stream-host"]
+claims_anchors = [
+  "anchor/export/sim-lib-stream-host/shape/device-effect",
+  "anchor/export/sim-lib-stream-host/shape/music-effect",
+]
 claims_specimens = ["spec-test/sim-stream-host/tests/device_authority"]
 supports = ["feature/sim-stream-host/read-first-device-sessions"]
 
