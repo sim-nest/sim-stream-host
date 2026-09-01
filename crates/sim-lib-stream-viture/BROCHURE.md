@@ -19,5 +19,6 @@ available.
 ## Where it fits
 
 It sits in sim-stream-host beside the wrist bridge and uses the shared stream
-device and XR sample contracts. The unsafe SDK boundary stays isolated in
-sim-viture-ffi; this crate remains ordinary safe Rust.
+device and XR sample contracts. The unsafe SDK and physical transport boundary
+stays isolated in the `sim-platform`-owned `sim-viture-ffi` capsule; this crate
+remains ordinary safe Rust.

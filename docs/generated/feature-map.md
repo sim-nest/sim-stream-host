@@ -8,5 +8,4 @@
 | `sim-lib-stream-host` | `workspace` | 4 | 0 |
 | `sim-lib-stream-viture` | `workspace` | 0 | 0 |
 | `sim-lib-stream-wristbridge` | `workspace` | 0 | 0 |
-| `sim-viture-ffi` | `workspace` | 0 | 0 |
 | `xtask` | `workspace` | 0 | 0 |

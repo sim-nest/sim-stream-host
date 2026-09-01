@@ -25,6 +25,7 @@ mod inventory;
 mod midi_live_eval_site;
 mod midi_provider;
 mod model;
+mod music_effects;
 mod placement;
 mod provider;
 mod queue;
@@ -51,8 +52,11 @@ pub use config_probe::{
 };
 pub use cookbook::fake_backend_demo;
 pub use device::{
-    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSample, DeviceSession,
-    StubProvider, StubSession, device_sample_kind_symbol, poll_device_sample,
+    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSample, EffectBounds,
+    EffectDescriptor, EffectReceipt, EffectRegistry, EffectRequest, EffectSession,
+    FakeEffectSession, IdempotencePolicy, ObservationCassette, ObservationSession, OpenedSession,
+    ProviderManifest, ProviderTransport, ReversalPolicy, StubProvider, StubSession,
+    device_sample_kind_symbol, poll_device_sample, standard_effect_descriptor,
 };
 pub use eval_site::{DeviceProvider as CatalogDeviceProvider, StreamEvalSite};
 pub use fake::{FakeBackend, fake_backend_symbol};
@@ -75,6 +79,7 @@ pub use model::{
     HostBackendInfo, HostDeviceSpec, HostDirection, HostOpenPlan, stream_host_capability,
     stream_host_device_read_effect_kind, stream_host_device_write_effect_kind,
 };
+pub use music_effects::{MusicEffect, music_effect_registry};
 pub use placement::{
     AudioDeviceCard, AudioPlacementRequest, AudioSiteKey, DeviceDirection, DeviceKind,
     DevicePlacement, DeviceRecord, LanPlacementMode, LanPlacementReport, LanPlacementRequest,

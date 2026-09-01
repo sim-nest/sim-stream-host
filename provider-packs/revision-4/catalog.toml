@@ -1,0 +1,152 @@
+schema = "sim.device-provider-pack-catalog/v1"
+revision = 4
+default_authority = "observe"
+effect_admission = "registered-descriptor-only"
+
+# Public packs describe reusable apparatus families. Physical identity, ownership,
+# LAN coordinates, credentials, firmware observations, and host selection belong
+# in the private selection record.
+
+[[pack]]
+id = "computer-placement"
+transport = "native"
+observations = ["placement/capacity", "placement/health"]
+effects = []
+unsupported = ["process/spawn", "host/admin"]
+fallback = "manual-placement"
+cassette = "cassettes.toml#computer-placement"
+
+[[pack]]
+id = "android-relay"
+transport = "ble"
+observations = ["relay/availability", "relay/link-quality"]
+effects = []
+unsupported = ["device/enroll", "credential/install", "os/configure"]
+fallback = "manual-relay"
+cassette = "cassettes.toml#android-relay"
+
+[[pack]]
+id = "halo"
+transport = "ble"
+observations = ["halo/link", "halo/battery"]
+effects = []
+unsupported = ["camera/capture", "microphone/capture", "firmware/update"]
+fallback = "modeled-glance"
+cassette = "cassettes.toml#halo"
+
+[[pack]]
+id = "watch"
+transport = "ble"
+observations = ["watch/link", "watch/battery", "watch/intent"]
+effects = []
+unsupported = ["health/infer", "location/history", "firmware/update"]
+fallback = "manual-intent"
+cassette = "cassettes.toml#watch"
+
+[[pack]]
+id = "camera"
+transport = "import"
+observations = ["camera/availability", "camera/still"]
+effects = []
+unsupported = ["camera/ptz", "camera/record", "camera/microphone"]
+fallback = "manual-still-import"
+cassette = "cassettes.toml#camera"
+
+[[pack]]
+id = "cook-probe"
+transport = "import"
+observations = ["cook/core-temperature", "cook/ambient-temperature", "cook/stale"]
+effects = []
+unsupported = ["cook/target-write", "cook/alarm-write"]
+fallback = "manual-reading"
+cassette = "cassettes.toml#cook-probe"
+
+[[pack]]
+id = "zigbee"
+transport = "native"
+observations = ["zigbee/coordinator", "zigbee/sensor"]
+effects = []
+unsupported = ["zigbee/permit-join", "zigbee/write", "firmware/update"]
+fallback = "manual-deconz"
+cassette = "cassettes.toml#zigbee"
+
+[[pack]]
+id = "vehicle-read"
+transport = "import"
+observations = ["vehicle/status", "vehicle/stale"]
+effects = []
+unsupported = ["vehicle/unlock", "vehicle/start", "vehicle/climate", "vehicle/location-history"]
+fallback = "manual-vehicle-app"
+cassette = "cassettes.toml#vehicle-read"
+
+[[pack]]
+id = "energy-read"
+transport = "native"
+observations = ["energy/power", "energy/battery", "energy/alarm"]
+effects = []
+unsupported = ["energy/write", "energy/relay", "energy/firmware"]
+fallback = "manual-energy-console"
+cassette = "cassettes.toml#energy-read"
+
+[[pack]]
+id = "oasys-midi"
+transport = "ble"
+observations = ["midi/events", "midi/link"]
+effects = []
+unsupported = ["midi/send", "instrument/configure", "firmware/update"]
+fallback = "manual-midi-cable"
+cassette = "cassettes.toml#oasys-midi"
+
+[[pack]]
+id = "oasys-audio"
+transport = "native"
+observations = ["audio/route", "audio/level"]
+effects = []
+unsupported = ["audio/route-write", "instrument/configure"]
+fallback = "manual-audio-route"
+cassette = "cassettes.toml#oasys-audio"
+
+[[pack]]
+id = "rx-v777-digital-audio"
+transport = "native"
+observations = ["audio/sink-availability", "audio/route"]
+effects = []
+unsupported = ["receiver/power", "receiver/input", "receiver/volume", "firmware/update"]
+fallback = "manual-receiver"
+cassette = "cassettes.toml#rx-v777-digital-audio"
+
+[[pack]]
+id = "bench-instrument"
+transport = "usb"
+observations = ["instrument/identity", "instrument/reading", "instrument/waveform"]
+effects = []
+unsupported = ["instrument/output", "instrument/configure", "firmware/update"]
+fallback = "manual-bench-reading"
+cassette = "cassettes.toml#bench-instrument"
+
+[[pack]]
+id = "calculator-file"
+transport = "import"
+observations = ["artifact/import", "artifact/receipt"]
+effects = []
+unsupported = ["calculator/control", "firmware/update"]
+fallback = "manual-file-transfer"
+cassette = "cassettes.toml#calculator-file"
+
+[[pack]]
+id = "print-host-artifact"
+transport = "import"
+observations = ["artifact/preview", "artifact/transfer-receipt"]
+effects = []
+unsupported = ["printer/start", "printer/heat", "printer/move", "firmware/update"]
+fallback = "manual-removable-media"
+cassette = "cassettes.toml#print-host-artifact"
+
+[[pack]]
+id = "imagined-light-meter"
+transport = "cassette"
+observations = ["instrument/illuminance", "instrument/stale"]
+effects = []
+unsupported = ["instrument/calibrate", "instrument/configure"]
+fallback = "manual-reading"
+cassette = "cassettes.toml#imagined-light-meter"

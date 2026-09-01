@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
-use sim_kernel::{CapabilitySet, Cx, DefaultFactory, EagerPolicy, Error, Expr, Symbol};
+use sim_kernel::{
+    CapabilityName, CapabilitySet, Cx, DefaultFactory, EagerPolicy, Error, Expr, Symbol,
+};
 use sim_lib_scene::{GlanceCard, GlanceMetric};
 use sim_lib_stream_device::{DeviceSample, ModeledSource};
 use sim_lib_stream_host::{
-    BoundedContentStore, DeviceError, DeviceProvider, DeviceSession, GlassesCapability,
+    BoundedContentStore, DeviceError, DeviceProvider, EffectRequest, EffectSession,
+    GlassesCapability, ObservationSession,
 };
 use sim_lib_stream_xr::{
     ModeledHaloCameraSource, ModeledHaloMicSource, ModeledHaloMotionSource, ModeledHaloTapSource,
@@ -154,7 +157,17 @@ fn scene_send_emits_budgeted_lua_diff() {
     let mut session = provider.open_session().unwrap();
     session.start().unwrap();
     let frame = glance("Ready", "info", false);
-    session.send(&frame).unwrap();
+    session
+        .invoke(EffectRequest {
+            descriptor: Symbol::qualified("device/effect", "halo-frame"),
+            payload: frame,
+            arm: Some("armed".into()),
+            idempotence_key: Some("frame-1".into()),
+            grants: vec![CapabilityName::new("device.effect.halo-frame")],
+            armed_at_ms: 1,
+            invoked_at_ms: 2,
+        })
+        .unwrap();
     let packet = &session.sent_frames()[0];
     assert_eq!(packet.route(), HaloRouteKind::Relay);
     assert!(!packet.lua().is_empty());
@@ -175,14 +188,22 @@ fn camera_pull_is_one_shot_consent_gated_and_by_reference() {
     let pull =
         HaloCameraPull::new(17, frame_key.clone(), 123, Expr::Bytes(vec![1, 2, 3, 4]), 4).unwrap();
     let mut store = BoundedContentStore::new(32).unwrap();
-    let cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x8faf_e7a9_fd4e_99cc),
+    );
     assert!(matches!(
         pull_halo_camera_once(&cx, &mut store, &receipt, &session, pull.clone(), 0),
         Err(Error::CapabilityDenied { .. })
     ));
 
     let granted = CapabilitySet::new().grant(GlassesCapability::Camera.capability_name());
-    let mut cx = Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let mut cx = Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0xfffb_5120_b5ee_91a2),
+    );
     cx.with_capabilities(granted, |cx| {
         let (frame, evicted) = pull_halo_camera_once(cx, &mut store, &receipt, &session, pull, 0)?;
         assert!(evicted.is_empty());

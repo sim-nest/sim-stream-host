@@ -383,7 +383,11 @@ impl Lib for ModeledBackendLib {
 }
 
 fn test_cx() -> Cx {
-    Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory))
+    Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0xe9ae_7d7e_9eca_edfc),
+    )
 }
 
 fn authorized_cx() -> Cx {

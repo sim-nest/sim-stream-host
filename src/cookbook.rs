@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use sim_kernel::{Cx, DefaultFactory, EagerPolicy, Expr, NumberLiteral, Symbol};
+use sim_kernel::{Cx, DefaultFactory, EagerPolicy, Expr, HandleSeed, NumberLiteral, Symbol};
 
 use crate::{FakeBackend, HostBackend, HostBackendRegistry, stream_host_capability};
 
@@ -54,7 +54,11 @@ fn number(value: impl ToString) -> Expr {
     reason = "published sim-kernel grants return unit; workspace grants return Result"
 )]
 fn authorized_demo_cx() -> Cx {
-    let (mut cx, seat) = Cx::new_seated(Arc::new(EagerPolicy), Arc::new(DefaultFactory));
+    let (mut cx, seat) = Cx::new_seated(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        HandleSeed::new(1),
+    );
     seat.grant(&mut cx, stream_host_capability())
         .assert_demo_granted();
     cx

@@ -4,8 +4,9 @@ use std::collections::VecDeque;
 
 use sim_kernel::{Expr, Symbol};
 use sim_lib_stream_host::{
-    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSample, DeviceSession,
-    device_sample_kind_symbol,
+    DeviceError, DeviceProfile, DeviceProvider, DeviceResult, DeviceSample, EffectReceipt,
+    EffectRequest, EffectSession, ObservationSession, OpenedSession, device_sample_kind_symbol,
+    standard_effect_descriptor,
 };
 
 use crate::ble::BlueZLink;
@@ -145,8 +146,8 @@ impl WatchProvider {
 }
 
 impl DeviceProvider for WatchProvider {
-    fn open(&self) -> DeviceResult<Box<dyn DeviceSession>> {
-        Ok(Box::new(self.open_session()?))
+    fn open(&self) -> DeviceResult<OpenedSession> {
+        Ok(OpenedSession::Effect(Box::new(self.open_session()?)))
     }
 }
 
@@ -181,7 +182,7 @@ impl WatchSession {
     }
 }
 
-impl DeviceSession for WatchSession {
+impl ObservationSession for WatchSession {
     fn profile(&self) -> &DeviceProfile {
         &self.profile
     }
@@ -198,13 +199,22 @@ impl DeviceSession for WatchSession {
         }
     }
 
-    fn send(&mut self, command: &Expr) -> DeviceResult<()> {
-        self.sent.push(encode_watch_command(self.route, command)?);
-        Ok(())
-    }
-
     fn stop(&mut self) -> DeviceResult<()> {
         Ok(())
+    }
+}
+
+impl EffectSession for WatchSession {
+    fn invoke(&mut self, request: EffectRequest) -> DeviceResult<EffectReceipt> {
+        let descriptor = standard_effect_descriptor("watch-command");
+        descriptor.authorize(&request)?;
+        self.sent
+            .push(encode_watch_command(self.route, &request.payload)?);
+        Ok(EffectReceipt {
+            kind: descriptor.receipt,
+            descriptor: descriptor.id,
+            sequence: self.sent.len() as u64,
+        })
     }
 }
 

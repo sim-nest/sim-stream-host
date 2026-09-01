@@ -118,7 +118,11 @@ impl Lib for ModeledProviderLib {
 }
 
 fn test_cx() -> Cx {
-    Cx::new(Arc::new(EagerPolicy), Arc::new(DefaultFactory))
+    Cx::new(
+        Arc::new(EagerPolicy),
+        Arc::new(DefaultFactory),
+        sim_kernel::HandleSeed::new(0x8158_c80a_3b20_d7ab),
+    )
 }
 
 #[test]

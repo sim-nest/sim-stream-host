@@ -1,0 +1,101 @@
+schema = "sim.device-provider-cassettes/v1"
+privacy = "synthetic-only"
+
+# Every identity, endpoint, reading, person, and home label in this file is
+# intentionally fictional. Cassettes prove contract shape, never deployment.
+
+[[cassette]]
+id = "computer-placement"
+device = "modeled-compute-a"
+endpoint = "cassette://compute-a"
+samples = ["capacity=8", "health=ready"]
+
+[[cassette]]
+id = "android-relay"
+device = "modeled-relay-a"
+endpoint = "cassette://relay-a"
+samples = ["availability=ready", "link_quality=73"]
+
+[[cassette]]
+id = "halo"
+device = "modeled-glasses-a"
+endpoint = "cassette://glasses-a"
+samples = ["link=modeled", "battery_percent=61"]
+
+[[cassette]]
+id = "watch"
+device = "modeled-watch-a"
+endpoint = "cassette://watch-a"
+samples = ["link=modeled", "battery_percent=57", "intent=cancel"]
+
+[[cassette]]
+id = "camera"
+device = "modeled-camera-a"
+endpoint = "cassette://camera-a"
+samples = ["availability=ready", "still=content:synthetic-workbench"]
+
+[[cassette]]
+id = "cook-probe"
+device = "modeled-probe-a"
+endpoint = "cassette://probe-a"
+samples = ["core_celsius=68.4", "ambient_celsius=121.0", "stale=false"]
+
+[[cassette]]
+id = "zigbee"
+device = "modeled-coordinator-a"
+endpoint = "cassette://zigbee-a"
+samples = ["coordinator=ready", "sensor=synthetic-lamp-off"]
+
+[[cassette]]
+id = "vehicle-read"
+device = "modeled-vehicle-a"
+endpoint = "cassette://vehicle-a"
+samples = ["status=parked", "fuel_percent=42", "stale=false"]
+
+[[cassette]]
+id = "energy-read"
+device = "modeled-energy-a"
+endpoint = "cassette://energy-a"
+samples = ["power_watts=840", "battery_percent=76", "alarm=none"]
+
+[[cassette]]
+id = "oasys-midi"
+device = "modeled-keyboard-a"
+endpoint = "cassette://midi-a"
+samples = ["event=note-on-60", "link=ready"]
+
+[[cassette]]
+id = "oasys-audio"
+device = "modeled-instrument-audio-a"
+endpoint = "cassette://instrument-audio-a"
+samples = ["route=manual-line", "level_db=-18"]
+
+[[cassette]]
+id = "rx-v777-digital-audio"
+device = "modeled-receiver-a"
+endpoint = "cassette://receiver-a"
+samples = ["sink=available", "route=manual-hdmi-a"]
+
+[[cassette]]
+id = "bench-instrument"
+device = "modeled-meter-a"
+endpoint = "cassette://meter-a"
+samples = ["identity=synthetic-meter", "reading_volts=3.3"]
+
+[[cassette]]
+id = "calculator-file"
+device = "modeled-calculator-a"
+endpoint = "cassette://calculator-a"
+samples = ["artifact=content:synthetic-equation", "receipt=imported"]
+
+[[cassette]]
+id = "print-host-artifact"
+device = "modeled-print-host-a"
+endpoint = "cassette://print-host-a"
+samples = ["preview=content:synthetic-part", "transfer=review-required"]
+
+[[cassette]]
+id = "imagined-light-meter"
+device = "imagined-light-meter-a"
+endpoint = "cassette://imagined-light-meter-a"
+samples = ["illuminance_lux=315", "stale=false"]

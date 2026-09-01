@@ -39,7 +39,7 @@ claims_surfaces = [
 [[feature]]
 id = "feature/sim-stream-host/hardware-host-surfaces"
 title = "Hardware host surfaces"
-summary = "Collect stream-host placement, Viture glasses, Halo glasses, watch bridge, and native FFI adapters as one hardware-facing code feature."
+summary = "Collect shared stream placement, Viture glasses semantics, Halo glasses semantics, and watch bridges above capsule-owned physical ports."
 owner = "crate/sim-lib-stream-host"
 audiences = ["code", "framework"]
 guidance = "Use this row when placing a stream on host hardware or choosing a modeled device adapter."
@@ -48,7 +48,6 @@ claims_anchors = [
   "anchor/crate/sim-lib-stream-host",
   "anchor/crate/sim-lib-stream-viture",
   "anchor/crate/sim-lib-stream-wristbridge",
-  "anchor/crate/sim-viture-ffi",
 ]
 claims_surfaces = [
   "site/sim-lib-stream-host",
@@ -57,10 +56,35 @@ claims_specimens = [
   "spec-test/sim-stream-host/src/placement_tests",
 ]
 
+[[feature]]
+id = "feature/sim-stream-host/read-first-device-sessions"
+title = "Read-first device sessions"
+summary = "Separate observation authority from registered, bounded, named device effects through reachable session types and versioned provider manifests."
+owner = "crate/sim-lib-stream-host"
+audiences = ["code", "framework"]
+guidance = "Open providers through OpenedSession. Keep observation consumers on ObservationSession; request EffectSession only for a registered descriptor and validate ProviderManifest against EffectRegistry before registration. Compose apparatus diversity from the generic revision-4 catalog and synthetic cassettes under provider-packs/; keep physical selection and identity private."
+claims_specimens = ["spec-test/sim-stream-host/src/device_tests"]
+supports = ["feature/sim-stream-host/hardware-host-surfaces"]
+
+[[feature]]
+id = "feature/sim-stream-host/named-music-effects"
+title = "Named, bounded music effects"
+summary = "Admit only reviewed MIDI send, audio route open/close, and emergency-stop adapters with explicit authority descriptors and deterministic fake-provider proof."
+owner = "crate/sim-lib-stream-host"
+audiences = ["code", "framework"]
+guidance = "Compose MusicEffect descriptors through music_effect_registry; never translate arbitrary strings into provider commands. Use FakeEffectSession to prove expiry, idempotence, bounds, reversal, and local stop without hardware."
+claims_anchors = [
+  "anchor/export/sim-lib-stream-host/shape/device-effect",
+  "anchor/export/sim-lib-stream-host/shape/music-effect",
+]
+claims_specimens = ["spec-test/sim-stream-host/tests/device_authority"]
+supports = ["feature/sim-stream-host/read-first-device-sessions"]
+
 [[route]]
 id = "route/add-hardware-host-surface"
 task = "Add a hardware host surface"
 audiences = ["code", "framework"]
 steps = [
   { feature = "feature/sim-stream-host/hardware-host-surfaces", why = "The host row owns placement, device adapters, and hardware-facing stream surfaces." },
+  { feature = "feature/sim-stream-host/read-first-device-sessions", why = "Choose observation-only or registered effect authority before exposing the provider." },
 ]
