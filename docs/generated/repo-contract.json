@@ -22,6 +22,7 @@
   ],
   "citizen_count": 0,
   "citizens": [],
+  "contract_exclusions": [],
   "generator": "xtask repo-contract v1",
   "group_count": 1,
   "group_order": [
@@ -236,29 +237,43 @@
   ],
   "provenance": {
     "api_docs": "target/doc/",
-    "generated_by": "cargo run -p xtask -- simdoc",
-    "generation_timestamp": "2026-07-15T00:40:48+02:00",
+    "execution": {
+      "executable": {
+        "lock_sha256": "de3cf584352514646909797b8454326e8ba4d3d90bf87ed7c3592ae971073678",
+        "package": "simdoc",
+        "source_sha256": "d7cf28ffbfd68c31cecdf43041010a396a19cc76ddf90f4f0b6dbecbbedc599b",
+        "version": "0.1.0"
+      },
+      "operation": "repo-contract --repo .",
+      "resolver": null,
+      "toolchain": {
+        "cargo": {
+          "commit_hash": "30a34c6821b57de0aaec83a901aca39f88f6778c",
+          "release": "1.96.0"
+        },
+        "rustc": {
+          "commit_hash": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96",
+          "release": "1.96.0"
+        }
+      }
+    },
+    "generation_timestamp": "2026-09-29T20:01:06+02:00",
     "generator": "xtask repo-contract v1",
-    "git_commit": "25e71cbbfee1ad036fa9c5e5b360e7370f7c2a10",
+    "git_commit": "b5fd231b57b047692f8cac06f7d238d927c1657b",
+    "regeneration_command": "cargo run -p xtask -- simdoc",
     "repo": "sim-stream-host",
     "schema": "sim.provenance.v1",
-    "source_commit": "25e71cbbfee1ad036fa9c5e5b360e7370f7c2a10",
+    "source_commit": "b5fd231b57b047692f8cac06f7d238d927c1657b",
     "source_remote": "https://github.com/sim-nest/sim-stream-host",
     "validation_commands": [
-      "cargo fmt --all --check",
-      "cargo test",
-      "cargo clippy --all-targets -- -D warnings",
-      "cargo doc --no-deps",
-      "cargo run -p xtask -- simdoc --check",
-      "cargo run -p xtask -- check-file-sizes",
-      "cargo run -p xtask -- repo-contract --check --repo .",
-      "cargo run -p xtask -- validation-matrix --check --repo .",
-      "cargo run -p xtask -- crate-catalog --check --repo ."
+      "cargo run -p xtask -- simdoc --check"
     ],
-    "workspace_hash": "4829ac3014927ee2",
+    "workspace_hash": "0ddc2b5dd7d9361a",
     "workspace_hash_algorithm": "fnv1a64",
-    "workspace_hash_input_count": 84,
+    "workspace_hash_input_count": 88,
     "workspace_hash_inputs": [
+      ".github/workflows/authorship.yml",
+      ".github/workflows/ci.yml",
       "Cargo.toml",
       "crates/sim-lib-stream-halo/Cargo.toml",
       "crates/sim-lib-stream-halo/src/ble.rs",
@@ -342,7 +357,9 @@
       "src/tests.rs",
       "src/watch.rs",
       "src/watch_tests.rs",
-      "xtask/Cargo.toml"
+      "tests/device_authority.rs",
+      "xtask/Cargo.toml",
+      "xtask/src/main.rs"
     ]
   },
   "recipe_book_count": 1,
